@@ -2,17 +2,6 @@
 
 This file is a map for AI agents working in `remnote-mcp-bridge` (RemNote Automation Bridge plugin).
 
-## Start Here First (Mandatory)
-
-Read these before making changes:
-
-1. `.agents/dev-requirements.md`
-2. `.agents/dev-workflow.md`
-3. `.agents/dev-documentation.md` (required before any docs changes)
-4. `.agents/PLANS.md` (required for complex work / major refactors)
-
-If you skip required tests/docs/verification/changelog steps described above, the task is incomplete.
-
 ## Repo Role
 
 This repo is the bridge plugin between RemNote SDK and two external consumer paths:
