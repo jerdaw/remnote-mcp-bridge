@@ -11,8 +11,12 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Unified simple note and markdown tree creation into a single `create_note` action.
   - Supports simple note creation (`title` only), hierarchical markdown import under a parent (`title` + `content`), and direct markdown import (`content` only).
-  - Flashcards could be created using RemNote markdown syntax (e.g., `::`, `;;`, `>>`) within the `content` or `title`.
-  - Refined tag application rules: tags are only applied to the created root or top-level Rems, not to all nested descendants.
+  - Flashcards could be created using RemNote markdown syntax (e.g., `::`, `;;`, `>>`) within the `content`.
+- Added support for hierarchical markdown trees in `update_note` (`appendContent`, `replaceContent`) and `append_journal` (`content`).
+
+### Changed
+- Standardized mutating actions (`createNote`, `updateNote`, `appendJournal`) to return plural response format `{ remIds, titles }`.
+- Refined tag application rules with hierarchical markdown: tags are only applied to the created root or top-level Rems, not to all nested descendants.
 
 ## [0.8.0] - 2026-03-04
 
