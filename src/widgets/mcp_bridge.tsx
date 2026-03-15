@@ -50,8 +50,8 @@ interface SessionStats {
 interface HistoryEntry {
   timestamp: Date;
   action: 'create' | 'update' | 'journal' | 'search' | 'read';
-  title: string;
-  remId?: string;
+  titles: string[];
+  remIds?: string[];
 }
 
 function AutomationBridgeWidget() {
@@ -109,9 +109,9 @@ function AutomationBridgeWidget() {
 
   // Add history entry helper
   const addHistoryEntry = useCallback(
-    (action: HistoryEntry['action'], title: string, remId?: string) => {
+    (action: HistoryEntry['action'], titles: string[], remIds?: string[]) => {
       setHistory((prev) => {
-        const newHistory = [{ timestamp: new Date(), action, title, remId }, ...prev];
+        const newHistory = [{ timestamp: new Date(), action, titles, remIds }, ...prev];
         // Keep only last 10 entries
         return newHistory.slice(0, 10);
       });
@@ -183,7 +183,7 @@ function AutomationBridgeWidget() {
             timestamp: payload.timestamp as boolean | undefined,
           });
           setStats((prev) => ({ ...prev, journal: prev.journal + 1 }));
-          addHistoryEntry('journal', 'Journal entry', result.remIds);
+          addHistoryEntry('journal', ['Journal entry'], result.remIds);
           return result;
         }
 
@@ -201,7 +201,7 @@ function AutomationBridgeWidget() {
             maxContentLength: payload.maxContentLength as number | undefined,
           });
           setStats((prev) => ({ ...prev, searches: prev.searches + 1 }));
-          addHistoryEntry('search', `Search: "${payload.query}"`);
+          addHistoryEntry('search', [`Search: "${payload.query}"`]);
           return result;
         }
 
@@ -219,7 +219,7 @@ function AutomationBridgeWidget() {
             maxContentLength: payload.maxContentLength as number | undefined,
           });
           setStats((prev) => ({ ...prev, searches: prev.searches + 1 }));
-          addHistoryEntry('search', `Search by tag: "${payload.tag}"`);
+          addHistoryEntry('search', [`Search by tag: "${payload.tag}"`]);
           return result;
         }
 
@@ -235,7 +235,7 @@ function AutomationBridgeWidget() {
             childLimit: payload.childLimit as number | undefined,
             maxContentLength: payload.maxContentLength as number | undefined,
           });
-          addHistoryEntry('read', result.title, result.remId);
+          addHistoryEntry('read', [result.title], [result.remId]);
           return result;
         }
 
@@ -249,7 +249,7 @@ function AutomationBridgeWidget() {
             removeTags: payload.removeTags as string[] | undefined,
           });
           setStats((prev) => ({ ...prev, updated: prev.updated + 1 }));
-          addHistoryEntry('update', (payload.title as string) || 'Note updated', result.remIds);
+          addHistoryEntry('update', result.titles || 'Note updated', result.remIds);
           return result;
         }
 

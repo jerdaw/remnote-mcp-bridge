@@ -8,7 +8,6 @@ import {
   RichTextInterface,
   PluginRem,
   RemType,
-  SetRemType,
   BuiltInPowerupCodes,
 } from '@remnote/plugin-sdk';
 import {
@@ -878,7 +877,6 @@ export class RemAdapter {
       .join('\n');
   }
 
-
   /**
    * Remove all direct child Rems under a parent Rem.
    */
@@ -892,21 +890,20 @@ export class RemAdapter {
   /**
    * Helper to extract IDs and titles from a list of Rems.
    */
-  private async extractRemResults(rems: PluginRem[]): Promise<{ remIds: string[]; titles: string[] }> {
+  private async extractRemResults(
+    rems: PluginRem[]
+  ): Promise<{ remIds: string[]; titles: string[] }> {
     const remIds = rems.map((r) => r._id);
     const titles = await Promise.all(rems.map((r) => this.extractText(r.text)));
     return { remIds, titles };
   }
-
 
   /**
    * Create a new note (Rem) in RemNote.
    * Supports both simple note creation and hierarchical markdown import
    * Supports flashcards create through RemNote markdown syntax.
    */
-  async createNote(
-    params: CreateNoteParams
-  ): Promise<{ remIds: string[]; titles: string[] }> {
+  async createNote(params: CreateNoteParams): Promise<{ remIds: string[]; titles: string[] }> {
     if (!this.settings.acceptWriteOperations) {
       throw new Error('Write operations are disabled in Automation Bridge settings');
     }
@@ -924,12 +921,14 @@ export class RemAdapter {
 
     const remIds: string[] = [];
     const titles: string[] = [];
+    const hasContent = params.content !== undefined && params.content !== null;
+
     // Scenario 1: title provided
     if (params.title) {
       const titleRem = await this.plugin.rem.createRem();
       if (!titleRem) throw new Error('Failed to create Rem');
 
-      await titleRem.setText(this.textToRichText(params.title));
+      await titleRem.setText(this.textToRichText(params.title!));
 
       if (parentId) {
         const parentRem = await this.plugin.rem.findOne(parentId);
@@ -942,26 +941,35 @@ export class RemAdapter {
       }
 
       remIds.push(titleRem._id);
-      titles.push(params.title);
+      titles.push(params.title!);
 
-      if (params.content) {
+      if (hasContent) {
         // Normalize content to collapse consecutive blank lines
-        const normalizedContent = this.normalizeContent(params.content);
-        // Use native SDK method to create the tree
-        const createdRems = await this.plugin.rem.createTreeWithMarkdown(normalizedContent, titleRem._id);
-        if (createdRems) {
-          const results = await this.extractRemResults(createdRems);
-          remIds.push(...results.remIds);
-          titles.push(...results.titles);
+        const normalizedContent = this.normalizeContent(params.content!);
+        if (normalizedContent) {
+          // Use native SDK method to create the tree
+          const createdRems = await this.plugin.rem.createTreeWithMarkdown(
+            normalizedContent,
+            titleRem._id
+          );
+          if (createdRems) {
+            const results = await this.extractRemResults(createdRems);
+            remIds.push(...results.remIds);
+            titles.push(...results.titles);
+          }
         }
       }
 
       return { remIds, titles };
-
-    } else if (params.content) {
+    } else if (hasContent) {
       // Scenario 2: content only
       // Normalize content to collapse consecutive blank lines
-      const normalizedContent = this.normalizeContent(params.content);
+      const normalizedContent = this.normalizeContent(params.content!);
+      console.log('Normalized content:', normalizedContent);
+      if (!normalizedContent) {
+        throw new Error('Content is empty');
+      }
+
       // Use native SDK method to create the tree
       const createdRems = await this.plugin.rem.createTreeWithMarkdown(normalizedContent, parentId);
 
@@ -988,17 +996,17 @@ export class RemAdapter {
       titles.push(...results.titles);
 
       return { remIds, titles };
-
     } else {
       throw new Error('create_note requires either title or content');
     }
   }
 
-
   /**
    * Append content to today's journal/daily document
    */
-  async appendJournal(params: AppendJournalParams): Promise<{ remIds: string[]; titles: string[] }> {
+  async appendJournal(
+    params: AppendJournalParams
+  ): Promise<{ remIds: string[]; titles: string[] }> {
     if (!this.settings.acceptWriteOperations) {
       throw new Error('Write operations are disabled in Automation Bridge settings');
     }
@@ -1027,6 +1035,9 @@ export class RemAdapter {
 
     // Normalize and create the tree
     let normalizedContent = this.normalizeContent(params.content);
+    if (!normalizedContent) {
+      throw new Error('Journal content is empty');
+    }
     // If content is > 2 lines of markdown, add all content under a rem with prefix
     if (prefixToCreate !== '') {
       if (normalizedContent.split('\n').length > 2) {
@@ -1042,12 +1053,15 @@ export class RemAdapter {
       } else {
         // If content is only one line, add prefix to the content and add to daily doc directly
         normalizedContent = prefixToCreate + params.content;
-        parentRemId = dailyDoc._id
+        parentRemId = dailyDoc._id;
       }
     }
 
     // Create the tree under daily document or the prefix Rem
-    const createdRems = await this.plugin.rem.createTreeWithMarkdown(normalizedContent, parentRemId);
+    const createdRems = await this.plugin.rem.createTreeWithMarkdown(
+      normalizedContent,
+      parentRemId
+    );
     const results = await this.extractRemResults(createdRems);
     remIds.push(...results.remIds);
     titles.push(...results.titles);
@@ -1258,7 +1272,7 @@ export class RemAdapter {
     const titles: string[] = [];
 
     // Update title if provided
-    if (params.title) {
+    if (params.title !== undefined && params.title !== null) {
       await rem.setText(this.textToRichText(params.title));
       titles.push(params.title);
       remIds.push(params.remId);
@@ -1269,7 +1283,10 @@ export class RemAdapter {
       await this.clearDirectChildren(rem);
       const normalizedContent = this.normalizeContent(params.replaceContent);
       if (normalizedContent) {
-        const createdRems = await this.plugin.rem.createTreeWithMarkdown(normalizedContent, rem._id);
+        const createdRems = await this.plugin.rem.createTreeWithMarkdown(
+          normalizedContent,
+          rem._id
+        );
         const results = await this.extractRemResults(createdRems);
         remIds.push(...results.remIds);
         titles.push(...results.titles);
@@ -1280,7 +1297,10 @@ export class RemAdapter {
     if (params.appendContent !== undefined) {
       const normalizedContent = this.normalizeContent(params.appendContent);
       if (normalizedContent) {
-        const createdRems = await this.plugin.rem.createTreeWithMarkdown(normalizedContent, rem._id);
+        const createdRems = await this.plugin.rem.createTreeWithMarkdown(
+          normalizedContent,
+          rem._id
+        );
         const results = await this.extractRemResults(createdRems);
         remIds.push(...results.remIds);
         titles.push(...results.titles);

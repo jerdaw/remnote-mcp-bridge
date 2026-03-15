@@ -253,7 +253,7 @@ describe('RemAdapter', () => {
       expect(rootRem!.getTags()).toContain(tagRem._id);
 
       // Children should NOT have tags
-      const childIds = result.remIds!.filter(id => id !== rootRemId);
+      const childIds = result.remIds!.filter((id) => id !== rootRemId);
       for (const id of childIds) {
         const rem = await plugin.rem.findOne(id);
         expect(rem!.getTags()).not.toContain(tagRem._id);
@@ -271,7 +271,7 @@ describe('RemAdapter', () => {
 
       plugin.rem.createTreeWithMarkdown.mockResolvedValueOnce([top1, top2, nested]);
 
-      const result = await adapter.createNote({
+       await adapter.createNote({
         content: '- Top 1\n  - Nested\n- Top 2',
         tags: ['top-tag']
       });
