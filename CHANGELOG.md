@@ -7,6 +7,12 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Documentation
+
+- Clarified the required startup order in `README.md`, including that the right-sidebar Automation Bridge panel must be
+  opened to mount the bridge runtime and start connection attempts.
+- Documented the manual `Reconnect` fallback after automatic retry exhaustion.
+
 ## [0.8.0] - 2026-03-04
 
 ### Added
