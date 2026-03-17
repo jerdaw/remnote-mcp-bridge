@@ -5,16 +5,10 @@
  * Uses renderWidget() as required by RemNote plugin SDK.
  */
 
-import { renderWidget, usePlugin } from '@remnote/plugin-sdk';
-import React, { useEffect, useState, useCallback } from 'react';
+import { renderWidget, StorageEvents, usePlugin } from '@remnote/plugin-sdk';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ConnectionStatus, RetryPhase } from '../bridge/websocket-client';
-import {
-  getBridgeRuntime,
-  type BridgeRuntimeSnapshot,
-  type HistoryEntry,
-  type LogEntry,
-  type SessionStats,
-} from '../bridge/runtime';
+import { type BridgeRuntimeSnapshot, type HistoryEntry } from '../bridge/runtime';
 import { useCompatibleTracker as useTracker } from './tracker-compat';
 import {
   SETTING_ACCEPT_WRITE_OPERATIONS,
@@ -28,9 +22,32 @@ import {
   DEFAULT_WS_URL,
   AutomationBridgeSettings,
 } from '../settings';
+import {
+  BRIDGE_UI_COMMAND_STORAGE_KEY,
+  BRIDGE_UI_SNAPSHOT_STORAGE_KEY,
+  type BridgeUiCommand,
+  deserializeBridgeRuntimeSnapshot,
+  isSerializedBridgeRuntimeSnapshot,
+} from './runtime-ui-bridge';
+import { withScopedLogPrefix } from '../logging';
+
+function createBridgeUiCommand(
+  kind: BridgeUiCommand['kind'],
+  extra: Omit<BridgeUiCommand, 'source' | 'id' | 'timestamp' | 'kind'>
+): BridgeUiCommand {
+  return {
+    source: 'widget',
+    id: `widget-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    timestamp: Date.now(),
+    kind,
+    ...extra,
+  } as BridgeUiCommand;
+}
 
 function AutomationBridgeWidget() {
   const plugin = usePlugin();
+  const lastSnapshotSignatureRef = useRef<string | null>(null);
+  const lastSettingsSignatureRef = useRef<string | null>(null);
   const [snapshot, setSnapshot] = useState<BridgeRuntimeSnapshot>({
     status: 'disconnected',
     retryPhase: 'idle',
@@ -44,16 +61,6 @@ function AutomationBridgeWidget() {
     },
     history: [],
   });
-  const [status, setStatus] = useState<ConnectionStatus>('disconnected');
-  const [retryPhase, setRetryPhase] = useState<RetryPhase>('idle');
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [stats, setStats] = useState<SessionStats>({
-    created: 0,
-    updated: 0,
-    journal: 0,
-    searches: 0,
-  });
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   // Read settings from RemNote
   const acceptWriteOperations = useTracker(
@@ -83,59 +90,103 @@ function AutomationBridgeWidget() {
     []
   );
 
-  useEffect(() => {
-    const runtime = getBridgeRuntime();
-    if (!runtime) {
+  const applySnapshot = useCallback((storedSnapshot: unknown) => {
+    if (!isSerializedBridgeRuntimeSnapshot(storedSnapshot)) {
       return;
     }
 
-    return runtime.subscribe((nextSnapshot) => {
-      setSnapshot(nextSnapshot);
-      setStatus(nextSnapshot.status);
-      setRetryPhase(nextSnapshot.retryPhase);
-      setLogs(nextSnapshot.logs);
-      setStats(nextSnapshot.stats);
-      setHistory(nextSnapshot.history);
-    });
+    const signature = `${storedSnapshot.status}:${storedSnapshot.retryPhase}`;
+    if (lastSnapshotSignatureRef.current !== signature) {
+      console.log(
+        withScopedLogPrefix(
+          'widget',
+          `Storage snapshot read: status=${storedSnapshot.status} retryPhase=${storedSnapshot.retryPhase} logs=${storedSnapshot.logs.length}`
+        )
+      );
+      lastSnapshotSignatureRef.current = signature;
+    }
+
+    setSnapshot(deserializeBridgeRuntimeSnapshot(storedSnapshot));
   }, []);
 
   useEffect(() => {
-    const runtime = getBridgeRuntime();
-    if (!runtime) {
+    console.log(withScopedLogPrefix('widget', 'Widget mounted'));
+
+    const storageListener = (value: unknown): void => {
+      applySnapshot(value);
+    };
+
+    plugin.event.addListener(
+      StorageEvents.StorageSessionChange,
+      BRIDGE_UI_SNAPSHOT_STORAGE_KEY,
+      storageListener
+    );
+
+    void plugin.storage
+      .getSession(BRIDGE_UI_SNAPSHOT_STORAGE_KEY)
+      .then((storedSnapshot) => {
+        applySnapshot(storedSnapshot);
+      })
+      .catch((error) => {
+        console.warn(withScopedLogPrefix('widget', `Failed to read stored snapshot: ${error}`));
+      });
+
+    const command = createBridgeUiCommand('request_snapshot', {});
+
+    console.log(withScopedLogPrefix('widget', 'Storage command out: request_snapshot'));
+    void plugin.storage.setSession(BRIDGE_UI_COMMAND_STORAGE_KEY, command);
+
+    return () => {
+      plugin.event.removeListener(
+        StorageEvents.StorageSessionChange,
+        BRIDGE_UI_SNAPSHOT_STORAGE_KEY,
+        storageListener
+      );
+      console.log(withScopedLogPrefix('widget', 'Widget unmounted'));
+    };
+  }, [applySnapshot, plugin]);
+
+  useEffect(() => {
+    if (
+      acceptWriteOperations === undefined ||
+      acceptReplaceOperation === undefined ||
+      autoTagEnabled === undefined ||
+      autoTag === undefined ||
+      journalPrefix === undefined ||
+      journalTimestamp === undefined ||
+      wsUrl === undefined ||
+      defaultParentId === undefined
+    ) {
       return;
     }
 
-    const settings: Partial<AutomationBridgeSettings> = {};
+    const settings: AutomationBridgeSettings = {
+      acceptWriteOperations,
+      acceptReplaceOperation,
+      autoTagEnabled,
+      autoTag,
+      journalPrefix,
+      journalTimestamp,
+      wsUrl,
+      defaultParentId,
+    };
 
-    if (acceptWriteOperations !== undefined) {
-      settings.acceptWriteOperations = acceptWriteOperations;
+    const signature = JSON.stringify(settings);
+    if (lastSettingsSignatureRef.current === signature) {
+      return;
     }
-    if (acceptReplaceOperation !== undefined) {
-      settings.acceptReplaceOperation = acceptReplaceOperation;
-    }
-    if (autoTagEnabled !== undefined) {
-      settings.autoTagEnabled = autoTagEnabled;
-    }
-    if (autoTag !== undefined) {
-      settings.autoTag = autoTag;
-    }
-    if (journalPrefix !== undefined) {
-      settings.journalPrefix = journalPrefix;
-    }
-    if (journalTimestamp !== undefined) {
-      settings.journalTimestamp = journalTimestamp;
-    }
-    if (wsUrl !== undefined) {
-      settings.wsUrl = wsUrl;
-    }
-    if (defaultParentId !== undefined) {
-      settings.defaultParentId = defaultParentId;
-    }
+    lastSettingsSignatureRef.current = signature;
 
-    if (Object.keys(settings).length > 0) {
-      runtime.updateSettings(settings);
-    }
+    const command = createBridgeUiCommand('update_settings', { settings });
+    console.log(
+      withScopedLogPrefix(
+        'widget',
+        `Storage command out: update_settings keys=${Object.keys(settings).join(', ')}`
+      )
+    );
+    void plugin.storage.setSession(BRIDGE_UI_COMMAND_STORAGE_KEY, command);
   }, [
+    plugin,
     acceptWriteOperations,
     acceptReplaceOperation,
     autoTagEnabled,
@@ -148,8 +199,18 @@ function AutomationBridgeWidget() {
 
   // Handle reconnect button
   const handleReconnect = useCallback(() => {
-    getBridgeRuntime()?.reconnect('sidebar button');
-  }, []);
+    const command = createBridgeUiCommand('reconnect', {
+      reason: 'sidebar button',
+    });
+    console.log(withScopedLogPrefix('widget', 'Storage command out: reconnect'));
+    void plugin.storage.setSession(BRIDGE_UI_COMMAND_STORAGE_KEY, command);
+  }, [plugin]);
+
+  const status = snapshot.status as ConnectionStatus;
+  const retryPhase = snapshot.retryPhase as RetryPhase;
+  const logs = snapshot.logs;
+  const stats = snapshot.stats;
+  const history = snapshot.history;
 
   // Status colors and icons
   const statusConfig = {

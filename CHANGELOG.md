@@ -18,6 +18,12 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - The sidebar panel is now a monitoring and manual-control UI over the background runtime rather than the owner of the
   connection.
+- Added scoped runtime/widget console tracing for connection lifecycle and runtime-widget synchronization debugging.
+
+### Fixed
+
+- Fixed sidebar state sync after late panel opening by bridging snapshot updates and control commands across the
+  plugin activation context and the widget UI context through session-storage-based IPC.
 
 ### Documentation
 

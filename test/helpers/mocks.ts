@@ -3,7 +3,7 @@
  */
 import { vi } from 'vitest';
 import type { ReactRNPlugin, RichTextInterface, PluginRem, SetRemType } from '@remnote/plugin-sdk';
-import { RemType } from '@remnote/plugin-sdk';
+import { MessagingEvents, RemType } from '@remnote/plugin-sdk';
 import { BridgeRequest } from '../../src/bridge/websocket-client';
 
 /**
@@ -241,6 +241,10 @@ export class MockRemNotePlugin implements Partial<ReactRNPlugin> {
   private rems = new Map<string, MockRem>();
   private remsByName = new Map<string, MockRem>();
   private nextId = 1;
+  private eventListeners = new Map<
+    string,
+    Array<{ listenerKey: string | undefined; callback: (event: unknown) => void }>
+  >();
 
   rem = {
     createRem: vi.fn(async (): Promise<MockRem> => {
@@ -386,6 +390,52 @@ export class MockRemNotePlugin implements Partial<ReactRNPlugin> {
     }),
   };
 
+  event = {
+    addListener: vi.fn(
+      (eventId: string, listenerKey: string | undefined, callback: (event: unknown) => void) => {
+        const listeners = this.eventListeners.get(eventId) ?? [];
+        listeners.push({ listenerKey, callback });
+        this.eventListeners.set(eventId, listeners);
+      }
+    ),
+
+    removeListener: vi.fn(
+      (eventId: string, listenerKey: string | undefined, callback?: (event: unknown) => void) => {
+        const listeners = this.eventListeners.get(eventId) ?? [];
+        const filtered = listeners.filter((listener) => {
+          if (listener.listenerKey !== listenerKey) {
+            return true;
+          }
+          if (!callback) {
+            return false;
+          }
+          return listener.callback !== callback;
+        });
+        this.eventListeners.set(eventId, filtered);
+      }
+    ),
+  };
+
+  messaging = {
+    broadcast: vi.fn(async (message: unknown): Promise<void> => {
+      this.emitEvent(MessagingEvents.MessageBroadcast, message);
+    }),
+  };
+
+  storage = {
+    setSession: vi.fn(async (key: string, value: unknown): Promise<void> => {
+      this.sessionStorageStore.set(key, value);
+      this.emitEvent('storage.session.changed', value, key);
+    }),
+
+    getSession: vi.fn(async <T = unknown>(key: string | undefined): Promise<T | undefined> => {
+      if (!key) {
+        return undefined;
+      }
+      return this.sessionStorageStore.get(key) as T | undefined;
+    }),
+  };
+
   app = {
     registerWidget: vi.fn(async (): Promise<void> => {
       // Mock implementation
@@ -398,6 +448,7 @@ export class MockRemNotePlugin implements Partial<ReactRNPlugin> {
 
   // Helper methods
   private settingsStore = new Map<string, unknown>();
+  private sessionStorageStore = new Map<string, unknown>();
 
   private getSettingValue(id: string): unknown {
     return this.settingsStore.get(id);
@@ -420,7 +471,20 @@ export class MockRemNotePlugin implements Partial<ReactRNPlugin> {
     this.rems.clear();
     this.remsByName.clear();
     this.settingsStore.clear();
+    this.sessionStorageStore.clear();
+    this.eventListeners.clear();
     this.nextId = 1;
+  }
+
+  emitEvent(eventId: string, event: unknown, listenerKey?: string): void {
+    const listeners = this.eventListeners.get(eventId) ?? [];
+    listeners
+      .filter((listener) => listenerKey === undefined || listener.listenerKey === listenerKey)
+      .forEach((listener) => listener.callback(event));
+  }
+
+  getBroadcastMessages(): unknown[] {
+    return this.messaging.broadcast.mock.calls.map(([message]) => message);
   }
 }
 

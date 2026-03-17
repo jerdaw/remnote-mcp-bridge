@@ -1,6 +1,6 @@
 declare const __PLUGIN_VERSION__: string;
 
-import type { ReactRNPlugin } from '@remnote/plugin-sdk';
+import { type ReactRNPlugin } from '@remnote/plugin-sdk';
 import { RemAdapter } from '../api/rem-adapter';
 import {
   type BridgeRequest,
@@ -13,6 +13,8 @@ import {
   registerDevToolsBridgeExecutor,
   type DevToolsExecutorConfig,
 } from '../widgets/devtools-bridge-executor';
+import { registerBridgeRuntimeUiBridge } from '../widgets/runtime-ui-bridge';
+import { withScopedLogPrefix } from '../logging';
 
 export interface LogEntry {
   timestamp: Date;
@@ -60,6 +62,7 @@ class BridgeRuntimeController implements BridgeRuntime {
   private readonly listeners = new Set<(snapshot: BridgeRuntimeSnapshot) => void>();
   private wsClient: WebSocketClient;
   private unregisterDevTools: (() => void) | null = null;
+  private unregisterUiBridge: (() => void) | null = null;
   private windowListeners: Array<() => void> = [];
   private settings: AutomationBridgeSettings;
   private status: ConnectionStatus = 'disconnected';
@@ -86,8 +89,10 @@ class BridgeRuntimeController implements BridgeRuntime {
   }
 
   start(): void {
+    console.log(withScopedLogPrefix('runtime', 'Runtime start'));
     this.addLog('RemAdapter initialized', 'success');
     this.registerDevToolsExecutor();
+    this.registerUiBridge();
     this.registerLifecycleNudges();
     this.wsClient.connect();
     this.addLog(`Connecting to automation bridge server at ${this.settings.wsUrl}...`, 'info');
@@ -114,11 +119,19 @@ class BridgeRuntimeController implements BridgeRuntime {
   }
 
   reconnect(reason = 'manual request'): void {
+    console.log(withScopedLogPrefix('runtime', `Reconnect requested: ${reason}`));
     this.addLog(`Manual reconnection requested (${reason})`, 'info');
     this.wsClient.reconnect();
   }
 
   updateSettings(nextSettings: Partial<AutomationBridgeSettings>): void {
+    const settingKeys = Object.keys(nextSettings);
+    if (settingKeys.length > 0) {
+      console.log(
+        withScopedLogPrefix('runtime', `Settings update received: ${settingKeys.join(', ')}`)
+      );
+    }
+
     const previousWsUrl = this.settings.wsUrl;
     this.settings = { ...this.settings, ...nextSettings };
     this.adapter.updateSettings(this.settings);
@@ -136,8 +149,11 @@ class BridgeRuntimeController implements BridgeRuntime {
   }
 
   shutdown(): void {
+    console.log(withScopedLogPrefix('runtime', 'Runtime shutdown'));
     this.unregisterDevTools?.();
     this.unregisterDevTools = null;
+    this.unregisterUiBridge?.();
+    this.unregisterUiBridge = null;
     this.windowListeners.forEach((cleanup) => cleanup());
     this.windowListeners = [];
     this.wsClient.disconnect();
@@ -153,6 +169,7 @@ class BridgeRuntimeController implements BridgeRuntime {
       maxReconnectDelay: 30000,
       standbyReconnectDelay: 10 * 60 * 1000,
       onStatusChange: (status) => {
+        console.log(withScopedLogPrefix('runtime', `WebSocket status -> ${status}`));
         this.status = status;
         if (status === 'connected') {
           this.lastConnectedAt = Date.now();
@@ -160,6 +177,7 @@ class BridgeRuntimeController implements BridgeRuntime {
         this.emit();
       },
       onRetryPhaseChange: (phase) => {
+        console.log(withScopedLogPrefix('runtime', `Retry phase -> ${phase}`));
         this.retryPhase = phase;
         this.emit();
       },
@@ -329,6 +347,13 @@ class BridgeRuntimeController implements BridgeRuntime {
         document.removeEventListener('visibilitychange', visibilityListener)
       );
     }
+  }
+
+  private registerUiBridge(): void {
+    this.unregisterUiBridge = registerBridgeRuntimeUiBridge({
+      plugin: this.plugin,
+      runtime: this,
+    });
   }
 }
 

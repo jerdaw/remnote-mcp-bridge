@@ -11,6 +11,11 @@ import {
   type DevToolsResultDetail,
 } from '../../src/widgets/devtools-bridge-executor';
 import {
+  BRIDGE_UI_COMMAND_STORAGE_KEY,
+  BRIDGE_UI_SNAPSHOT_STORAGE_KEY,
+  isSerializedBridgeRuntimeSnapshot,
+} from '../../src/widgets/runtime-ui-bridge';
+import {
   SETTING_WS_URL,
   SETTING_ACCEPT_WRITE_OPERATIONS,
   SETTING_ACCEPT_REPLACE_OPERATION,
@@ -98,6 +103,28 @@ describe('Bridge runtime', () => {
     ).toBe(true);
   });
 
+  it('publishes runtime snapshots over the UI bridge while no widget is mounted', async () => {
+    plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:3002');
+    runtime = await initializeBridgeRuntime(plugin as unknown as never);
+    await wait(10);
+
+    await plugin.storage.setSession(BRIDGE_UI_COMMAND_STORAGE_KEY, {
+      source: 'widget',
+      id: 'cmd-request',
+      timestamp: Date.now(),
+      kind: 'request_snapshot',
+    });
+    await wait(10);
+
+    const latestSnapshot = await plugin.storage.getSession(BRIDGE_UI_SNAPSHOT_STORAGE_KEY);
+    expect(isSerializedBridgeRuntimeSnapshot(latestSnapshot)).toBe(true);
+    expect(latestSnapshot?.status).toBe('connected');
+    expect(
+      latestSnapshot?.logs.some((entry) => entry.message.includes('RemAdapter initialized')) ??
+        false
+    ).toBe(true);
+  });
+
   it('nudges reconnect on window focus while disconnected', async () => {
     plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:3002');
     runtime = await initializeBridgeRuntime(plugin as unknown as never);
@@ -115,6 +142,31 @@ describe('Bridge runtime', () => {
     expect(MockWebSocket.instances.length).toBeGreaterThan(instancesBeforeFocus);
     expect(
       snapshot.logs.some((entry) => entry.message.includes('Reconnect nudged: window focus'))
+    ).toBe(true);
+  });
+
+  it('handles reconnect commands from the UI bridge', async () => {
+    plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:3002');
+    runtime = await initializeBridgeRuntime(plugin as unknown as never);
+    await wait(10);
+
+    const instancesBeforeReconnect = MockWebSocket.instances.length;
+
+    await plugin.storage.setSession(BRIDGE_UI_COMMAND_STORAGE_KEY, {
+      source: 'widget',
+      id: 'cmd-reconnect',
+      timestamp: Date.now(),
+      kind: 'reconnect',
+      reason: 'sidebar button',
+    });
+    await wait(10);
+
+    const snapshot = runtime.getSnapshot();
+    expect(MockWebSocket.instances.length).toBeGreaterThan(instancesBeforeReconnect);
+    expect(
+      snapshot.logs.some((entry) =>
+        entry.message.includes('Manual reconnection requested (sidebar button)')
+      )
     ).toBe(true);
   });
 
