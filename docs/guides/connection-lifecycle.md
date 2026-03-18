@@ -101,7 +101,7 @@ This means a common workflow works well:
 1. Leave RemNote open.
 2. Start the CLI daemon or MCP server later.
 3. Open the Automation Bridge panel or move focus to another note/pane in RemNote.
-4. The bridge should attempt to reconnect immediately instead of waiting for the full standby timer.
+4. The bridge should immediately restart the faster retry window instead of waiting for the full standby timer.
 
 Important detail: normal in-app activity is a more reliable wake-up trigger than raw browser-window focus in RemNote.
 If none of those wake-up signals happen, the bridge reconnects on:
@@ -145,7 +145,8 @@ The panel shows:
 
 - next background retry countdown
 - last disconnect reason, when available
-- a hint that opening the panel, moving focus in RemNote, or browser visibility/online can trigger an earlier reconnect
+- a hint that opening the panel or moving focus in RemNote restarts faster retries, while browser visibility/online can
+  also wake it sooner
 
 ## Practical Scenarios
 
@@ -158,6 +159,9 @@ The bridge keeps retrying in the background. If you want to speed it up, either:
 - open the Automation Bridge panel
 - switch notes or panes inside RemNote
 - or click **Reconnect Now**
+
+When the bridge is already in standby, opening the panel or moving focus inside RemNote should restart the faster retry
+window instead of doing only one isolated retry attempt.
 
 ### RemNote Open on a Browser Machine for a Long Time
 

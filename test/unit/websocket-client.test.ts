@@ -306,6 +306,34 @@ describe('WebSocketClient', () => {
       expect(client.getStatus()).toBe('connected');
       expect(client.getReconnectMetadata().nextRetryAt).toBeUndefined();
     });
+
+    it('should restart burst retries when woken from standby', async () => {
+      vi.useFakeTimers();
+
+      client.connect();
+      await vi.runOnlyPendingTimersAsync();
+
+      MockWebSocket.mode = 'close';
+
+      const firstSocket = (client as unknown as { ws: MockWebSocket }).ws;
+      firstSocket.close(1006, 'Connection lost');
+
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await vi.runOnlyPendingTimersAsync();
+      }
+
+      expect(client.getRetryPhase()).toBe('standby');
+
+      client.wakeReconnect('bridge panel opened');
+      await vi.runOnlyPendingTimersAsync();
+
+      expect(
+        logs.some((log) => log.message.includes('Reconnect wake-up triggered: bridge panel opened'))
+      ).toBe(true);
+      expect(client.getRetryPhase()).toBe('burst');
+      expect(client.getReconnectMetadata().reconnectAttempts).toBe(1);
+      expect(client.getReconnectMetadata().nextRetryAt).toBeDefined();
+    });
   });
 
   describe('Edge cases', () => {

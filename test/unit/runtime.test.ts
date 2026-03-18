@@ -237,6 +237,38 @@ describe('Bridge runtime', () => {
     ).toBe(true);
   });
 
+  it('restarts burst retries from standby when RemNote activity wakes the bridge', async () => {
+    vi.useFakeTimers();
+    plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:3002');
+    runtime = await initializeBridgeRuntime(plugin as unknown as never);
+    await vi.runOnlyPendingTimersAsync();
+
+    MockWebSocket.mode = 'close';
+    MockWebSocket.instances.at(-1)?.close(1006, 'Connection lost');
+
+    for (let attempt = 0; attempt < 20; attempt++) {
+      await vi.runOnlyPendingTimersAsync();
+      if (runtime.getSnapshot().retryPhase === 'standby') {
+        break;
+      }
+    }
+
+    expect(runtime.getSnapshot().retryPhase).toBe('standby');
+
+    plugin.emitEvent(WindowEvents.FocusedPaneChange, {});
+    await vi.runOnlyPendingTimersAsync();
+
+    const snapshot = runtime.getSnapshot();
+    expect(snapshot.retryPhase).toBe('burst');
+    expect(snapshot.reconnectAttempts).toBe(1);
+    expect(snapshot.nextRetryAt).toBeDefined();
+    expect(
+      snapshot.logs.some((entry) =>
+        entry.message.includes('Resuming faster retries from standby (focused pane changed)')
+      )
+    ).toBe(true);
+  });
+
   it('recreates the websocket client when the wsUrl setting changes', async () => {
     plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:3002');
     runtime = await initializeBridgeRuntime(plugin as unknown as never);

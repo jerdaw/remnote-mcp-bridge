@@ -123,7 +123,7 @@ export function buildConnectionUiState(
       directionLabel: 'Bridge -> Companion app',
       phaseLabel: 'Standby reconnect',
       nextRetryLabel,
-      hint: 'It will also retry sooner when you open this panel, move focus inside RemNote, or the browser becomes visible or comes back online.',
+      hint: 'Opening this panel or moving focus inside RemNote restarts faster retries. Browser visibility and online events can also wake it sooner.',
       lastDisconnectLabel,
       lastConnectedLabel,
     };

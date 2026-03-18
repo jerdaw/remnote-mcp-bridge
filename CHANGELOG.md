@@ -28,8 +28,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Fixed sidebar state sync after late panel opening by bridging snapshot updates and control commands across the
   plugin activation context and the widget UI context through session-storage-based IPC.
-- Fixed standby wake-up retries so meaningful RemNote activity and opening the bridge panel can trigger earlier retry
-  nudges with cooldown protection instead of waiting for the next long standby timer.
+- Fixed standby wake-up retries so meaningful RemNote activity and opening the bridge panel restart the fast retry
+  window with cooldown protection instead of doing only one isolated retry attempt.
 
 ### Documentation
 

@@ -57,8 +57,8 @@ describe('connection-ui', () => {
     expect(ui.phaseLabel).toBe('Standby reconnect');
     expect(ui.nextRetryLabel).toBe('Next background retry in 10m 10s');
     expect(ui.lastConnectedLabel).toBe('Last connected 42s ago');
-    expect(ui.hint).toContain('open this panel');
-    expect(ui.hint).toContain('move focus inside RemNote');
+    expect(ui.hint).toContain('Opening this panel');
+    expect(ui.hint).toContain('moving focus inside RemNote');
   });
 
   it('describes connected state as ready', () => {

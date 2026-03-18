@@ -265,6 +265,24 @@ export class WebSocketClient {
     this.connect();
   }
 
+  wakeReconnect(reason: string): void {
+    if (this.isShuttingDown || this.status === 'connected' || this.status === 'connecting') {
+      return;
+    }
+
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
+    this.reconnectAttempts = 0;
+    this.nextRetryAt = undefined;
+    this.lastRetryDelayMs = undefined;
+    this.setRetryPhase('burst');
+    this.log(`Reconnect wake-up triggered: ${reason}`);
+    this.connect();
+  }
+
   nudgeReconnect(reason: string): void {
     if (this.isShuttingDown || this.status === 'connected' || this.status === 'connecting') {
       return;

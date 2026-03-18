@@ -168,6 +168,13 @@ class BridgeRuntimeController implements BridgeRuntime {
     this.lastSuppressedAutoNudgeAt = undefined;
     console.log(withScopedLogPrefix('runtime', `Auto reconnect nudged: ${reason}`));
     this.addLog(`Auto reconnect nudged (${reason})`, 'info');
+
+    if (this.retryPhase === 'standby') {
+      this.addLog(`Resuming faster retries from standby (${reason})`, 'info');
+      this.wsClient.wakeReconnect(reason);
+      return;
+    }
+
     this.wsClient.nudgeReconnect(reason);
   }
 
