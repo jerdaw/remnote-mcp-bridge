@@ -46,6 +46,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   weight in the overview, privacy, installation, and architecture sections.
 - Fixed stale DevTools debugging guides to reflect that the background runtime starts on plugin activation and the
   sidebar panel is optional for status/log visibility.
+- Added connected-state and burst-retry screenshots to the connection lifecycle guide.
 
 ## [0.9.0] - 2026-03-17
 

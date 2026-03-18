@@ -59,6 +59,11 @@ When the plugin starts, the bridge tries to connect immediately.
 
 If that succeeds, the sidebar shows **Connected** and the bridge is ready to accept requests.
 
+![Connected bridge state](./images/connection-lifecycle-02-connected-live-session.jpg)
+
+Connected state example: the bridge is live, the companion app endpoint is shown, and the session card confirms a
+healthy active connection.
+
 ### Burst Retry
 
 If the companion process is unavailable, the bridge enters a fast retry window:
@@ -73,6 +78,11 @@ The sidebar shows this as **Retrying** and displays both:
 
 - the current burst attempt count
 - the next scheduled retry countdown
+
+![Burst retry state](./images/connection-lifecycle-01-burst-retrying.jpg)
+
+Burst retry example: the sidebar shows the current retry attempt, the next retry countdown, the last disconnect code,
+and the immediate **Reconnect Now** action.
 
 ### Standby Retry
 
