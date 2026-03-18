@@ -60,6 +60,8 @@ describe('Bridge runtime', () => {
     const snapshot = runtime.getSnapshot();
     expect(snapshot.wsUrl).toBe('ws://127.0.0.1:4555');
     expect(snapshot.status).toBe('connected');
+    expect(snapshot.reconnectAttempts).toBe(0);
+    expect(snapshot.maxReconnectAttempts).toBe(10);
     expect(MockWebSocket.instances.at(-1)?.url).toBe('ws://127.0.0.1:4555');
     expect(snapshot.logs.some((entry) => entry.message.includes('RemAdapter initialized'))).toBe(
       true
@@ -140,6 +142,7 @@ describe('Bridge runtime', () => {
 
     const snapshot = runtime.getSnapshot();
     expect(MockWebSocket.instances.length).toBeGreaterThan(instancesBeforeFocus);
+    expect(snapshot.lastDisconnectReason).toContain('1006');
     expect(
       snapshot.logs.some((entry) => entry.message.includes('Reconnect nudged: window focus'))
     ).toBe(true);

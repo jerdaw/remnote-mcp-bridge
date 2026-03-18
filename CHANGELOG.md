@@ -19,6 +19,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - The sidebar panel is now a monitoring and manual-control UI over the background runtime rather than the owner of the
   connection.
 - Added scoped runtime/widget console tracing for connection lifecycle and runtime-widget synchronization debugging.
+- Improved the sidebar connection UI to show retry phase, next scheduled retry, last disconnect context, and clearer
+  reconnect guidance when the companion process is unavailable.
 
 ### Fixed
 
@@ -30,6 +32,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Updated `README.md` and setup guides to reflect the new automatic background startup and standby reconnect behavior.
 - Documented that the sidebar panel is optional for connection setup and remains available for status and manual
   `Reconnect`.
+- Added a focused connection lifecycle guide covering startup order, burst vs. standby retry behavior, and what can
+  trigger faster reconnects.
 - Reframed `README.md` around two first-class companion paths, giving `remnote-mcp-server` and `remnote-cli` equal
   weight in the overview, privacy, installation, and architecture sections.
 

@@ -5,6 +5,7 @@ import { RemAdapter } from '../api/rem-adapter';
 import {
   type BridgeRequest,
   type ConnectionStatus,
+  type ReconnectMetadata,
   type RetryPhase,
   WebSocketClient,
 } from './websocket-client';
@@ -44,6 +45,11 @@ export interface BridgeRuntimeSnapshot {
   stats: SessionStats;
   history: HistoryEntry[];
   lastConnectedAt?: number;
+  reconnectAttempts: number;
+  maxReconnectAttempts: number;
+  nextRetryAt?: number;
+  lastRetryDelayMs?: number;
+  lastDisconnectReason?: string;
 }
 
 export interface BridgeRuntime {
@@ -99,6 +105,8 @@ class BridgeRuntimeController implements BridgeRuntime {
   }
 
   getSnapshot(): BridgeRuntimeSnapshot {
+    const reconnectMetadata: ReconnectMetadata = this.wsClient.getReconnectMetadata();
+
     return {
       status: this.status,
       retryPhase: this.retryPhase,
@@ -107,6 +115,11 @@ class BridgeRuntimeController implements BridgeRuntime {
       stats: { ...this.stats },
       history: [...this.history],
       lastConnectedAt: this.lastConnectedAt,
+      reconnectAttempts: reconnectMetadata.reconnectAttempts,
+      maxReconnectAttempts: reconnectMetadata.maxReconnectAttempts,
+      nextRetryAt: reconnectMetadata.nextRetryAt,
+      lastRetryDelayMs: reconnectMetadata.lastRetryDelayMs,
+      lastDisconnectReason: reconnectMetadata.lastDisconnectReason,
     };
   }
 

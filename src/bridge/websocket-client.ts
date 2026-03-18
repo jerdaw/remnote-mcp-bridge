@@ -6,6 +6,14 @@
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 export type RetryPhase = 'idle' | 'burst' | 'standby';
 
+export interface ReconnectMetadata {
+  reconnectAttempts: number;
+  maxReconnectAttempts: number;
+  nextRetryAt?: number;
+  lastRetryDelayMs?: number;
+  lastDisconnectReason?: string;
+}
+
 export interface BridgeRequest {
   id: string;
   action: string;
@@ -43,6 +51,9 @@ export class WebSocketClient {
   private status: ConnectionStatus = 'disconnected';
   private retryPhase: RetryPhase = 'idle';
   private isShuttingDown = false;
+  private nextRetryAt?: number;
+  private lastRetryDelayMs?: number;
+  private lastDisconnectReason?: string;
 
   private config: Required<
     Omit<WebSocketClientConfig, 'onStatusChange' | 'onLog' | 'onRetryPhaseChange'>
@@ -103,6 +114,8 @@ export class WebSocketClient {
     }
 
     this.isShuttingDown = false;
+    this.nextRetryAt = undefined;
+    this.lastRetryDelayMs = undefined;
     this.setStatus('connecting');
     this.log(`Connecting to ${this.config.url}...`);
 
@@ -112,6 +125,8 @@ export class WebSocketClient {
       this.ws.onopen = () => {
         this.log('Connected to automation bridge server');
         this.reconnectAttempts = 0;
+        this.nextRetryAt = undefined;
+        this.lastRetryDelayMs = undefined;
         this.setRetryPhase('idle');
         this.setStatus('connected');
         this.sendHello();
@@ -122,7 +137,10 @@ export class WebSocketClient {
       };
 
       this.ws.onclose = (event) => {
-        this.log(`Disconnected: ${event.code} ${event.reason}`, 'warn');
+        this.lastDisconnectReason = event.reason
+          ? `${event.code} ${event.reason}`
+          : `${event.code}`;
+        this.log(`Disconnected: ${this.lastDisconnectReason}`, 'warn');
         this.setStatus('disconnected');
 
         if (!this.isShuttingDown) {
@@ -186,7 +204,6 @@ export class WebSocketClient {
     let delay: number;
 
     if (this.reconnectAttempts < this.config.maxReconnectAttempts) {
-      this.setRetryPhase('burst');
       const baseDelay = Math.min(
         this.config.initialReconnectDelay * Math.pow(2, this.reconnectAttempts),
         this.config.maxReconnectDelay
@@ -195,13 +212,18 @@ export class WebSocketClient {
       delay = baseDelay + jitter;
 
       this.reconnectAttempts++;
+      this.lastRetryDelayMs = delay;
+      this.nextRetryAt = Date.now() + delay;
+      this.setRetryPhase('burst');
       this.log(
         `Reconnecting in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts}/${this.config.maxReconnectAttempts})`
       );
     } else {
-      this.setRetryPhase('standby');
       const jitter = Math.random() * 0.1 * this.config.standbyReconnectDelay;
       delay = this.config.standbyReconnectDelay + jitter;
+      this.lastRetryDelayMs = delay;
+      this.nextRetryAt = Date.now() + delay;
+      this.setRetryPhase('standby');
       this.log(
         `Entering standby reconnect mode; next retry in ${Math.round(delay / 1000)}s`,
         'warn'
@@ -231,6 +253,8 @@ export class WebSocketClient {
       this.ws = null;
     }
 
+    this.nextRetryAt = undefined;
+    this.lastRetryDelayMs = undefined;
     this.setRetryPhase('idle');
     this.setStatus('disconnected');
   }
@@ -251,6 +275,8 @@ export class WebSocketClient {
       this.reconnectTimeout = null;
     }
 
+    this.nextRetryAt = undefined;
+    this.lastRetryDelayMs = undefined;
     this.log(`Reconnect nudged: ${reason}`);
     this.connect();
   }
@@ -261,5 +287,15 @@ export class WebSocketClient {
 
   getRetryPhase(): RetryPhase {
     return this.retryPhase;
+  }
+
+  getReconnectMetadata(): ReconnectMetadata {
+    return {
+      reconnectAttempts: this.reconnectAttempts,
+      maxReconnectAttempts: this.config.maxReconnectAttempts,
+      nextRetryAt: this.nextRetryAt,
+      lastRetryDelayMs: this.lastRetryDelayMs,
+      lastDisconnectReason: this.lastDisconnectReason,
+    };
   }
 }

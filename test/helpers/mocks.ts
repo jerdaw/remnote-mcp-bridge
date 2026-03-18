@@ -41,7 +41,10 @@ export class MockWebSocket {
     if (MockWebSocket.mode === 'close') {
       setTimeout(() => {
         this.readyState = MockWebSocket.CLOSED;
-        this.onclose?.(new CloseEvent('close', { code: 1006, reason: 'Mock connection failure' }));
+        this.onclose?.({
+          code: 1006,
+          reason: 'Mock connection failure',
+        } as CloseEvent);
       }, 0);
     }
   }
@@ -55,7 +58,10 @@ export class MockWebSocket {
 
   close(code?: number, reason?: string): void {
     this.readyState = MockWebSocket.CLOSED;
-    const event = new CloseEvent('close', { code, reason });
+    const event = {
+      code: code ?? 1000,
+      reason: reason ?? '',
+    } as CloseEvent;
     this.onclose?.(event);
   }
 

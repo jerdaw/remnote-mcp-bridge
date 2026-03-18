@@ -29,6 +29,7 @@ import {
   deserializeBridgeRuntimeSnapshot,
   isSerializedBridgeRuntimeSnapshot,
 } from './runtime-ui-bridge';
+import { buildConnectionUiState } from './connection-ui';
 import { withScopedLogPrefix } from '../logging';
 
 function createBridgeUiCommand(
@@ -48,6 +49,7 @@ function AutomationBridgeWidget() {
   const plugin = usePlugin();
   const lastSnapshotSignatureRef = useRef<string | null>(null);
   const lastSettingsSignatureRef = useRef<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [snapshot, setSnapshot] = useState<BridgeRuntimeSnapshot>({
     status: 'disconnected',
     retryPhase: 'idle',
@@ -60,6 +62,8 @@ function AutomationBridgeWidget() {
       searches: 0,
     },
     history: [],
+    reconnectAttempts: 0,
+    maxReconnectAttempts: 10,
   });
 
   // Read settings from RemNote
@@ -197,6 +201,22 @@ function AutomationBridgeWidget() {
     defaultParentId,
   ]);
 
+  useEffect(() => {
+    setNow(Date.now());
+
+    if (!snapshot.nextRetryAt || snapshot.status === 'connected') {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [snapshot.nextRetryAt, snapshot.status]);
+
   // Handle reconnect button
   const handleReconnect = useCallback(() => {
     const command = createBridgeUiCommand('reconnect', {
@@ -211,21 +231,7 @@ function AutomationBridgeWidget() {
   const logs = snapshot.logs;
   const stats = snapshot.stats;
   const history = snapshot.history;
-
-  // Status colors and icons
-  const statusConfig = {
-    connected: { color: '#22c55e', bg: '#dcfce7', icon: '●', text: 'Connected' },
-    connecting: { color: '#f59e0b', bg: '#fef3c7', icon: '◐', text: 'Connecting...' },
-    disconnected: {
-      color: retryPhase === 'standby' ? '#2563eb' : '#ef4444',
-      bg: retryPhase === 'standby' ? '#dbeafe' : '#fee2e2',
-      icon: retryPhase === 'standby' ? '◌' : '○',
-      text: retryPhase === 'standby' ? 'Waiting for server...' : 'Disconnected',
-    },
-    error: { color: '#ef4444', bg: '#fee2e2', icon: '✕', text: 'Error' },
-  };
-
-  const currentStatus = statusConfig[status];
+  const connectionUi = buildConnectionUiState(snapshot, now);
 
   // Action icons for history
   const actionIcons: Record<HistoryEntry['action'], string> = {
@@ -257,34 +263,78 @@ function AutomationBridgeWidget() {
             gap: '6px',
             padding: '4px 8px',
             borderRadius: '12px',
-            backgroundColor: currentStatus.bg,
-            color: currentStatus.color,
+            backgroundColor: connectionUi.badge.bg,
+            color: connectionUi.badge.color,
             fontSize: '12px',
             fontWeight: 500,
           }}
         >
-          <span>{currentStatus.icon}</span>
-          <span>{currentStatus.text}</span>
+          <span>{connectionUi.badge.icon}</span>
+          <span>{connectionUi.badge.text}</span>
+        </div>
+      </div>
+
+      <div
+        style={{
+          marginBottom: '12px',
+          padding: '10px',
+          border: '1px solid #e5e7eb',
+          borderRadius: '6px',
+          backgroundColor: '#f9fafb',
+        }}
+      >
+        <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '6px' }}>
+          {connectionUi.summary}
+        </div>
+        {connectionUi.phaseLabel && (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '3px 8px',
+              borderRadius: '999px',
+              backgroundColor: '#eef2ff',
+              color: '#4338ca',
+              fontSize: '11px',
+              fontWeight: 600,
+              marginBottom: '8px',
+            }}
+          >
+            {connectionUi.phaseLabel}
+          </div>
+        )}
+        <div style={{ display: 'grid', gap: '4px', fontSize: '11px', color: '#4b5563' }}>
+          <div>Server: {snapshot.wsUrl}</div>
+          {connectionUi.nextRetryLabel && <div>{connectionUi.nextRetryLabel}</div>}
+          {connectionUi.lastConnectedLabel && <div>{connectionUi.lastConnectedLabel}</div>}
+          {connectionUi.lastDisconnectLabel && <div>{connectionUi.lastDisconnectLabel}</div>}
+          {connectionUi.hint && <div>{connectionUi.hint}</div>}
         </div>
       </div>
 
       {/* Reconnect button */}
       {status !== 'connected' && (
-        <button
-          onClick={handleReconnect}
-          style={{
-            width: '100%',
-            padding: '8px',
-            marginBottom: '12px',
-            border: '1px solid #e5e7eb',
-            borderRadius: '6px',
-            backgroundColor: '#f9fafb',
-            cursor: 'pointer',
-            fontSize: '12px',
-          }}
-        >
-          Reconnect
-        </button>
+        <div style={{ marginBottom: '12px' }}>
+          <button
+            onClick={handleReconnect}
+            style={{
+              width: '100%',
+              padding: '8px',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              backgroundColor: '#ffffff',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 600,
+            }}
+          >
+            Reconnect Now
+          </button>
+          <div style={{ marginTop: '6px', fontSize: '11px', color: '#6b7280' }}>
+            Forces an immediate retry instead of waiting for the next scheduled one.
+          </div>
+        </div>
       )}
 
       {/* Stats Section */}
@@ -301,7 +351,13 @@ function AutomationBridgeWidget() {
           SESSION STATS
         </div>
         <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '8px' }}>
-          Server: {snapshot.wsUrl}
+          {retryPhase === 'burst'
+            ? `Burst window: ${Math.min(snapshot.reconnectAttempts, snapshot.maxReconnectAttempts)}/${snapshot.maxReconnectAttempts} retries used`
+            : retryPhase === 'standby'
+              ? 'Standby retry mode active'
+              : status === 'connected'
+                ? 'Live session active'
+                : 'Idle'}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

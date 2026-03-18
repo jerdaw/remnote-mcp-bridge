@@ -31,6 +31,8 @@ describe('registerBridgeRuntimeUiBridge', () => {
         },
       ],
       lastConnectedAt: 12345,
+      reconnectAttempts: 0,
+      maxReconnectAttempts: 10,
     };
 
     let subscriptionListener: ((snapshot: BridgeRuntimeSnapshot) => void) | undefined;
@@ -80,6 +82,8 @@ describe('registerBridgeRuntimeUiBridge', () => {
           logs: [],
           stats: { created: 0, updated: 0, journal: 0, searches: 0 },
           history: [],
+          reconnectAttempts: 0,
+          maxReconnectAttempts: 10,
         }),
         subscribe: () => () => {},
         reconnect,

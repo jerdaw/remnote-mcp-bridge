@@ -105,6 +105,8 @@ optionally open the control panel to inspect status and logs:
 The sidebar panel is no longer required to create the connection. It is a monitoring and manual-control surface for the
 background bridge runtime.
 
+For the full connection/reconnect behavior, see the [Connection Lifecycle Guide](docs/guides/connection-lifecycle.md).
+
 Related setup/testing guide:
 
 - [Execute Bridge Commands from RemNote Developer Console (Screenshot Walkthrough)](docs/guides/development-execute-bridge-commands-screenshots.md)
@@ -146,12 +148,16 @@ workflow examples.
    - `remnote-mcp-server` for the MCP path
    - `remnote-cli daemon start` for the CLI path
 2. Open RemNote.
-3. Wait for the bridge to connect in the background, or open the Automation Bridge panel if you want to confirm status.
+3. Wait for the bridge to connect in the background, or open the Automation Bridge panel if you want to confirm
+   status.
 4. Only then start using your MCP client or `remnote-cli` commands.
 
-If RemNote was already open before the companion process started, the bridge will continue low-frequency background
-retries and should connect automatically once the companion process is listening. The **Reconnect** button in the
-sidebar panel remains available as a manual fast-path if you want an immediate retry.
+If RemNote was already open before the companion process started, the bridge keeps retrying automatically. You can
+click **Reconnect Now** for an immediate retry. The sidebar also shows whether the bridge is still in the quick retry
+window or already in standby background retry mode.
+
+For exact retry/backoff behavior and wake-up triggers such as focus/visibility, see the [Connection Lifecycle
+Guide](docs/guides/connection-lifecycle.md).
 
 ## Important Limitations
 

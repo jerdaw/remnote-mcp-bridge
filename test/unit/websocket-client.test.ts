@@ -235,6 +235,9 @@ describe('WebSocketClient', () => {
       // Check that reconnection is scheduled
       const reconnectLog = logs.find((log) => log.message.includes('Reconnecting in'));
       expect(reconnectLog).toBeDefined();
+      expect(client.getReconnectMetadata().reconnectAttempts).toBe(1);
+      expect(client.getReconnectMetadata().nextRetryAt).toBeDefined();
+      expect(client.getReconnectMetadata().lastDisconnectReason).toBe('1006 Connection lost');
     });
 
     it('should enter standby reconnect mode after burst attempts are exhausted', async () => {
@@ -258,6 +261,7 @@ describe('WebSocketClient', () => {
       expect(logs.some((log) => log.message.includes('Entering standby reconnect mode'))).toBe(
         true
       );
+      expect(client.getReconnectMetadata().nextRetryAt).toBeDefined();
     });
 
     it('should not reconnect if shutdown is in progress', async () => {
@@ -300,6 +304,7 @@ describe('WebSocketClient', () => {
 
       expect(logs.some((log) => log.message.includes('Reconnect nudged: window focus'))).toBe(true);
       expect(client.getStatus()).toBe('connected');
+      expect(client.getReconnectMetadata().nextRetryAt).toBeUndefined();
     });
   });
 
