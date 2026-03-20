@@ -7,6 +7,11 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- New `readTable()` method in RemAdapter for reading Advanced Table properties and cell values
+- New `read_table` action in runtime router for WebSocket bridge communication
+- Support for table lookup by Rem ID or tag name, pagination (limit/offset), and column filtering (propertyFilter)
+
 ## [0.10.0] - 2026-03-18
 
 ### Added

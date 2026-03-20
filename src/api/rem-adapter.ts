@@ -71,6 +71,34 @@ export interface UpdateNoteParams {
   removeTags?: string[];
 }
 
+export interface ReadTableParams {
+  tableNameOrId: string;
+  limit?: number;
+  offset?: number;
+  propertyFilter?: string[];
+}
+
+export interface TableColumn {
+  propertyId: string;
+  name: string;
+  type: string;
+}
+
+export interface TableRow {
+  remId: string;
+  name: string;
+  values: Record<string, string>;
+}
+
+export interface ReadTableResult {
+  tableId: string;
+  tableName: string;
+  columns: TableColumn[];
+  rows: TableRow[];
+  totalRows: number;
+  rowsReturned: number;
+}
+
 export interface ContentProperties {
   childrenRendered: number;
   childrenTotal: number;
@@ -1359,6 +1387,109 @@ export class RemAdapter {
     }
 
     return { titles, remIds };
+  }
+
+  /**
+   * Read table data from a RemNote table (tagged rems with properties).
+   */
+  async readTable(params: ReadTableParams): Promise<ReadTableResult> {
+    const limit = params.limit ?? 50;
+    const offset = params.offset ?? 0;
+
+    // 1. Resolve table rem: try by ID first, then by name
+    let tableRem = await this.plugin.rem.findOne(params.tableNameOrId);
+    if (!tableRem) {
+      const tagRem = await this.findTagRem(params.tableNameOrId);
+      tableRem = tagRem ?? undefined;
+    }
+    if (!tableRem) {
+      throw new Error(`Table not found: '${params.tableNameOrId}'`);
+    }
+
+    // 2. Extract columns: get children, filter by isProperty()
+    const children = await tableRem.getChildrenRem();
+    const propertyChildren: PluginRem[] = [];
+    for (const child of children) {
+      if (await child.isProperty()) {
+        propertyChildren.push(child);
+      }
+    }
+
+    // Check for no properties BEFORE applying filter
+    if (propertyChildren.length === 0) {
+      throw new Error(`Rem '${tableRem._id}' has no properties — not a table`);
+    }
+
+    // Get property names for filtering
+    const propertyNames = await Promise.all(
+      propertyChildren.map((prop) => this.extractText(prop.text))
+    );
+
+    // Apply propertyFilter if provided (matches by property NAME)
+    let columns: TableColumn[] = [];
+    if (params.propertyFilter && params.propertyFilter.length > 0) {
+      const filterSet = new Set(params.propertyFilter.map((f) => f.toLowerCase()));
+      columns = await Promise.all(
+        propertyChildren
+          .filter((prop, idx) => filterSet.has(propertyNames[idx].toLowerCase()))
+          .map(async (prop) => {
+            const propType = await prop.getPropertyType();
+            return {
+              propertyId: prop._id,
+              name: await this.extractText(prop.text),
+              type: propType ? String(propType) : 'unknown',
+            };
+          })
+      );
+    } else {
+      columns = await Promise.all(
+        propertyChildren.map(async (prop) => {
+          const propType = await prop.getPropertyType();
+          return {
+            propertyId: prop._id,
+            name: await this.extractText(prop.text),
+            type: propType ? String(propType) : 'unknown',
+          };
+        })
+      );
+    }
+
+    // 3. Extract rows: get tagged rems
+    const allTaggedRems =
+      'taggedRem' in tableRem && typeof tableRem.taggedRem === 'function'
+        ? await tableRem.taggedRem()
+        : [];
+
+    const totalRows = allTaggedRems.length;
+    const slicedRows = allTaggedRems.slice(offset, offset + limit);
+
+    // 4. Build row data
+    const rows: TableRow[] = await Promise.all(
+      slicedRows.map(async (row) => {
+        const name = await this.extractText(row.text);
+        const values: Record<string, string> = {};
+
+        for (const column of columns) {
+          const propValue = await row.getTagPropertyValue(column.propertyId);
+          values[column.propertyId] = await this.extractText(propValue);
+        }
+
+        return {
+          remId: row._id,
+          name,
+          values,
+        };
+      })
+    );
+
+    return {
+      tableId: tableRem._id,
+      tableName: await this.extractText(tableRem.text),
+      columns,
+      rows,
+      totalRows,
+      rowsReturned: rows.length,
+    };
   }
 
   /**
