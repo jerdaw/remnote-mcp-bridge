@@ -12,7 +12,6 @@ When a feature or protocol change affects more than one repo, the pull requests 
 
 Use the [repository pull request template](../../.github/pull_request_template.md) for the submission checklist.
 This guide explains the cross-repo policy behind that checklist.
-that checklist.
 
 ## Cross-Repo Parity
 
@@ -42,7 +41,10 @@ Integration tests are meant to validate the real bridge-consumer combination:
 - bridge + MCP server
 - bridge + CLI
 
-If a new feature belongs on the shared external surface, extend integration coverage in both companion repos where the feature can be exercised.
+If a new feature belongs on the shared external surface, extend integration coverage in both companion repos where the
+feature can be exercised.
+
+Use the canonical shared workflow in the MCP server repo: [Integration Testing Guide](https://github.com/robert7/remnote-mcp-server/blob/main/docs/guides/integration-testing.md).
 
 If integration coverage depends on a live RemNote object that cannot yet be created through the companion, document
 the temporary setup and keep the test automated as far as possible.

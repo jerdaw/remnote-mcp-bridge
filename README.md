@@ -330,6 +330,9 @@ In particular:
 - keep `remnote-mcp-server` and `remnote-cli` in parity when protocol or shared functionality changes
 - merge the latest target `master` into your source branch before opening or updating the PR
 
+For the canonical workflow for updating and running shared MCP server + CLI integration coverage, see the [Integration
+Testing Guide](https://github.com/robert7/remnote-mcp-server/blob/main/docs/guides/integration-testing.md).
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
