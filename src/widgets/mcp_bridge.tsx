@@ -569,7 +569,23 @@ function AutomationBridgeWidget() {
 
               const toggleExpand = () => {
                 if (showExpand) {
-                  setExpandedRows((prev) => ({ ...prev, [rowKey]: !prev[rowKey] }));
+                  setExpandedRows((prev) => {
+                    // Build the set of valid keys based on the current history,
+                    // so we can drop entries for rows that are no longer present.
+                    const validKeys = new Set(
+                      history.map((h) => `${h.timestamp.getTime()}-${h.action}-${h.remIds?.[0] ?? ''}`)
+                    );
+
+                    const next: typeof prev = {};
+                    for (const key of Object.keys(prev)) {
+                      if (validKeys.has(key)) {
+                        next[key] = prev[key];
+                      }
+                    }
+
+                    next[rowKey] = !prev[rowKey];
+                    return next;
+                  });
                 }
               };
 
