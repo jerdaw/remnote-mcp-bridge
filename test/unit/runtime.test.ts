@@ -4,6 +4,7 @@ import {
   initializeBridgeRuntime,
   shutdownBridgeRuntime,
   type BridgeRuntime,
+  MAX_HISTORY,
 } from '../../src/bridge/runtime';
 import { MockRemNotePlugin, MockWebSocket } from '../helpers/mocks';
 import {
@@ -101,6 +102,7 @@ describe('Bridge runtime', () => {
     expect(result.action).toBe('create_note');
     expect(snapshot.stats.created).toBe(1);
     expect(snapshot.history[0]?.action).toBe('create');
+    expect(snapshot.history[0]?.id).toBe('h-1');
     expect(
       snapshot.logs.some((entry) => entry.message.includes('DevTools execute: create_note'))
     ).toBe(true);
@@ -280,5 +282,37 @@ describe('Bridge runtime', () => {
     const snapshot = runtime.getSnapshot();
     expect(snapshot.wsUrl).toBe('ws://127.0.0.1:3777');
     expect(MockWebSocket.instances.at(-1)?.url).toBe('ws://127.0.0.1:3777');
+  });
+
+  it('limits history to MAX_HISTORY entries and generates unique incremental IDs', async () => {
+    plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:3002');
+    runtime = await initializeBridgeRuntime(plugin as unknown as never);
+    await wait(10);
+
+    // Generate more than MAX_HISTORY entries
+    const count = MAX_HISTORY + 5;
+    for (let i = 0; i < count; i++) {
+      window.dispatchEvent(
+        new CustomEvent(DEVTOOLS_EXECUTE_EVENT, {
+          detail: {
+            id: `cmd-${i}`,
+            action: 'create_note',
+            payload: { title: `Note ${i}` },
+          },
+        })
+      );
+      await wait(1); // Small delay to allow async ops if needed, though here it's event-based
+    }
+
+    const snapshot = runtime.getSnapshot();
+    expect(snapshot.history.length).toBe(MAX_HISTORY);
+
+    // The IDs should be h-1, h-2, ... h-15
+    // But since it's a stack (prepend), the first entry should be h-15
+    expect(snapshot.history[0].id).toBe(`h-${count}`);
+    expect(snapshot.history[MAX_HISTORY - 1].id).toBe(`h-${count - MAX_HISTORY + 1}`);
+
+    // Verify ordering: newest first
+    expect(snapshot.history[0].titles[0]).toBe(`Note ${count - 1}`);
   });
 });

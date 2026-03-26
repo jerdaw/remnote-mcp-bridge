@@ -62,10 +62,9 @@ export interface BridgeRuntime {
   shutdown(): void;
 }
 
-const MAX_LOGS = 50;
-const MAX_HISTORY = 10;
-const AUTO_NUDGE_COOLDOWN_MS = 15_000;
-let historyIdCounter = 0;
+export const MAX_LOGS = 50;
+export const MAX_HISTORY = 10;
+export const AUTO_NUDGE_COOLDOWN_MS = 15_000;
 
 class BridgeRuntimeController implements BridgeRuntime {
   private readonly adapter: RemAdapter;
@@ -85,6 +84,7 @@ class BridgeRuntimeController implements BridgeRuntime {
     searches: 0,
   };
   private history: HistoryEntry[] = [];
+  private historyIdCounter = 0;
   private lastConnectedAt?: number;
   private lastAutoNudgeAt?: number;
   private lastSuppressedAutoNudgeAt?: number;
@@ -254,7 +254,7 @@ class BridgeRuntimeController implements BridgeRuntime {
     remIds?: string[]
   ): void {
     this.history = [
-      { id: `h-${++historyIdCounter}`, timestamp: new Date(), action, titles, remIds },
+      { id: `h-${++this.historyIdCounter}`, timestamp: new Date(), action, titles, remIds },
       ...this.history,
     ].slice(0, MAX_HISTORY);
     this.emit();
