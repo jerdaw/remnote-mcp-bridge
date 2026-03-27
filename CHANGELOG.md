@@ -13,8 +13,24 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Support for table lookup by Rem ID or tag name, pagination (limit/offset), and column filtering (propertyFilter)
 
 ### Documentation
+- Added a dedicated pull request guide covering required docs, tests, cross-repo parity, integration-test updates,
+  and target-branch sync expectations.
+- Replaced the minimal GitHub pull request template with a checklist-driven template that points contributors to the
+  canonical guide.
+- Updated `README.md` contributing guidance to reference the new pull request process.
+- Linked the bridge README and PR guide to the canonical MCP server integration-testing workflow for shared live-test
+  updates.
 - Updated the README bridge action surface to include `read_table` and align action names with the actual bridge
   payload contract.
+
+## [0.10.2] - 2026-03-25
+
+### Added
+- Added interactive history entries: expandable child items view, hover actions panel with copy-reference button, and
+  click-to-open behavior on titles (thanks to @Twb06).
+
+### Changed
+- Raised the local tooling baseline to Node 20.19.0 for consistent package metadata and developer environment checks.
 
 ## [0.10.0] - 2026-03-18
 

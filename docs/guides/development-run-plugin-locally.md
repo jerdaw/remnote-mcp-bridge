@@ -7,7 +7,7 @@ This guide shows how to run `remnote-mcp-bridge` from source code and load it in
 
 ## Prerequisites
 
-- Node.js + npm installed
+- Node.js 20.19.0+ + npm for local source development and code-quality commands
 - RemNote desktop app or RemNote web app opened in browser
 - Terminal access
 - A plan to run a required companion component after plugin install:
@@ -15,15 +15,16 @@ This guide shows how to run `remnote-mcp-bridge` from source code and load it in
   - [RemNote CLI](https://github.com/robert7/remnote-cli)
 - Version match your companion app to your bridge plugin (`0.x` semver can break on minor bumps); see [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md)
 
-If your shell cannot find Node.js in this repo environment, run:
+If your shell cannot find a new enough Node.js in this repo environment, run:
 
 ```bash
 source node-check.sh
 ```
 
-> **Note**: this works if you installed Node.js via [nvm](https://github.com/nvm-sh/nvm),
-> if this is not your setup, ensure Node.js is properly installed and available in your
-> terminal and ignore the `source node-check.sh` step.
+> **Note**: this script prefers the version declared in this repo's `.nvmrc` (`20.19.0`) and also accepts newer
+> installed Node versions when they satisfy that floor.
+> It works best if you installed Node.js via [nvm](https://github.com/nvm-sh/nvm). If you
+> use another setup, make sure a compatible Node.js version is already available in your terminal.
 
 ## 1. Clone the repository
 

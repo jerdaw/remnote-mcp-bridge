@@ -50,6 +50,7 @@ function AutomationBridgeWidget() {
   const lastSnapshotSignatureRef = useRef<string | null>(null);
   const lastSettingsSignatureRef = useRef<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
   const [snapshot, setSnapshot] = useState<BridgeRuntimeSnapshot>({
     status: 'disconnected',
     retryPhase: 'idle',
@@ -248,6 +249,169 @@ function AutomationBridgeWidget() {
     read: '>',
   };
 
+  const handleOpenRem = useCallback(
+    async (e: React.MouseEvent, remId: string) => {
+      e.stopPropagation();
+      const targetRem = await plugin.rem.findOne(remId);
+      if (targetRem) {
+        await targetRem.openRemInContext();
+      } else {
+        await plugin.app.toast('Could not find that Rem!');
+      }
+    },
+    [plugin]
+  );
+
+  const handleCopyReference = useCallback(
+    async (e: React.MouseEvent, remId: string) => {
+      e.stopPropagation();
+      const targetRem = await plugin.rem.findOne(remId);
+      if (targetRem) {
+        try {
+          await targetRem.copyReferenceToClipboard();
+        } catch (err) {
+          console.error('Failed to copy reference:', err);
+        }
+      } else {
+        await plugin.app.toast('Could not find that Rem!');
+      }
+    },
+    [plugin]
+  );
+
+  const renderActionRow = (
+    isChild: boolean,
+    title: string,
+    remId: string | undefined,
+    action: HistoryEntry['action'],
+    timestamp: Date,
+    showExpandIcon: boolean,
+    itemCount: number,
+    onClickRow?: () => void
+  ) => {
+    return (
+      <div
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.02)';
+          const actions = e.currentTarget.querySelector('.row-actions') as HTMLElement | null;
+          if (actions) {
+            actions.style.opacity = '0.85';
+            actions.style.maxWidth = '50px';
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'transparent';
+          const actions = e.currentTarget.querySelector('.row-actions') as HTMLElement | null;
+          if (actions) {
+            actions.style.opacity = '0';
+            actions.style.maxWidth = '0px';
+          }
+        }}
+        onClick={onClickRow}
+        style={{
+          padding: isChild ? '6px 10px 6px 36px' : '6px 10px',
+          fontSize: '11px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          cursor: onClickRow ? 'pointer' : 'default',
+          transition: 'background-color 0.2s',
+          position: 'relative',
+        }}
+      >
+        <span
+          style={{
+            color:
+              action === 'create'
+                ? '#22c55e'
+                : action === 'update'
+                  ? '#3b82f6'
+                  : action === 'journal'
+                    ? '#8b5cf6'
+                    : action === 'search'
+                      ? '#f59e0b'
+                      : '#6b7280',
+            fontWeight: 600,
+            width: isChild ? '24px' : '28px',
+            minWidth: isChild ? '24px' : '28px',
+            whiteSpace: 'nowrap',
+            display: 'flex',
+            overflow: 'hidden',
+            alignItems: 'center',
+            justifyContent: isChild ? 'center' : 'flex-start',
+            gap: '2px',
+          }}
+        >
+          {actionIcons[action]}
+          {showExpandIcon && <span style={{ fontSize: '10px' }}>{itemCount}</span>}
+        </span>
+        <span style={{ color: '#6b7280', flexShrink: 0 }}>
+          {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </span>
+        <span
+          onClick={(e) => {
+            if (remId) handleOpenRem(e, remId);
+          }}
+          style={{
+            flex: 1,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            color: '#374151',
+            textDecoration: 'none',
+            cursor: remId ? 'pointer' : 'inherit',
+          }}
+        >
+          {title}
+        </span>
+
+        {/* Actions panel */}
+        <div
+          className="row-actions"
+          style={{
+            display: 'flex',
+            gap: '4px',
+            opacity: 0,
+            maxWidth: '0px',
+            overflow: 'hidden',
+            transition: 'all 0.2s',
+            alignItems: 'center',
+          }}
+        >
+          {remId && (
+            <span
+              onClick={(e) => handleCopyReference(e, remId)}
+              title="Copy Reference"
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            >
+              <span
+                data-icon="copy-v2"
+                className="inline-block"
+                style={{
+                  width: '16px',
+                  minWidth: '16px',
+                  height: '16px',
+                  minHeight: '16px',
+                  backgroundColor: 'currentColor',
+                  maskImage:
+                    'url(https://www.remnote.com/offline_assets/svg_icons/uncolored/copy-v2.svg)',
+                  maskRepeat: 'no-repeat',
+                  maskPosition: 'center center',
+                  maskSize: 'contain',
+                  WebkitMaskImage:
+                    'url(https://www.remnote.com/offline_assets/svg_icons/uncolored/copy-v2.svg)',
+                  WebkitMaskRepeat: 'no-repeat',
+                  WebkitMaskPosition: 'center center',
+                  WebkitMaskSize: 'contain',
+                }}
+              ></span>
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ padding: '12px', fontFamily: 'system-ui, sans-serif', fontSize: '13px' }}>
       {/* Header */}
@@ -361,6 +525,7 @@ function AutomationBridgeWidget() {
           border: '1px solid #e5e7eb',
           borderRadius: '6px',
           backgroundColor: '#f9fafb',
+          color: '#374151',
         }}
       >
         <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '8px', color: '#6b7280' }}>
@@ -417,56 +582,72 @@ function AutomationBridgeWidget() {
             RECENT ACTIONS
           </div>
           <div style={{ maxHeight: '120px', overflowY: 'auto' }}>
-            {history.map((entry, index) => (
-              <div
-                key={index}
-                style={{
-                  padding: '6px 10px',
-                  borderBottom: index < history.length - 1 ? '1px solid #e5e7eb' : 'none',
-                  fontSize: '11px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                <span
+            {history.map((entry, index) => {
+              const showExpand = entry.titles.length > 1;
+              const isExpanded = !!expandedRows[index];
+              //const isLast = index === history.length - 1;
+
+              const toggleExpand = () => {
+                if (showExpand) {
+                  setExpandedRows((prev) => ({ ...prev, [index]: !prev[index] }));
+                }
+              };
+
+              return (
+                <div
+                  key={index}
                   style={{
-                    color:
-                      entry.action === 'create'
-                        ? '#22c55e'
-                        : entry.action === 'update'
-                          ? '#3b82f6'
-                          : entry.action === 'journal'
-                            ? '#8b5cf6'
-                            : entry.action === 'search'
-                              ? '#f59e0b'
-                              : '#6b7280',
-                    fontWeight: 600,
-                    minWidth: '24px',
-                    whiteSpace: 'nowrap',
+                    borderBottom: index < history.length - 1 ? 'none' : '1px solid #e5e7eb',
                     display: 'flex',
-                    overflow: 'hidden',
+                    flexDirection: 'column',
                   }}
                 >
-                  {actionIcons[entry.action]}
-                  {entry.remIds && entry.remIds.length > 1 && <span>{entry.remIds.length}</span>}
-                </span>
-                <span style={{ color: '#9ca3af', flexShrink: 0 }}>
-                  {entry.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-                <span
-                  style={{
-                    flex: 1,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    color: '#374151',
-                  }}
-                >
-                  {entry.titles[0]}
-                </span>
-              </div>
-            ))}
+                  {/* Main Row */}
+                  {renderActionRow(
+                    false,
+                    entry.titles[0],
+                    entry.remIds?.[0],
+                    entry.action,
+                    entry.timestamp,
+                    showExpand && !isExpanded,
+                    entry.titles.length,
+                    showExpand ? toggleExpand : undefined
+                  )}
+
+                  {/* Expanded rows */}
+                  <div
+                    style={{
+                      maxHeight: isExpanded && showExpand ? '500px' : '0px',
+                      opacity: isExpanded && showExpand ? 1 : 0,
+                      overflowY: 'auto',
+                      transition: 'all 0.3s ease-in-out',
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {showExpand &&
+                        entry.titles.slice(1).map((title, idx) => {
+                          const actualIdx = idx + 1;
+                          const remId = entry.remIds?.[actualIdx];
+                          return (
+                            <React.Fragment key={actualIdx}>
+                              {renderActionRow(
+                                true,
+                                title,
+                                remId,
+                                entry.action,
+                                entry.timestamp,
+                                false,
+                                0,
+                                undefined
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
