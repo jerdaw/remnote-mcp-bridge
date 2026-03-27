@@ -1822,7 +1822,7 @@ describe('RemAdapter', () => {
       row2.setTagPropertyValueMock('prop-1', ['Done']);
       tableRem.setTaggedRemsMock([row1, row2]);
 
-      const result = await adapter.readTable({ tableNameOrId: 'table-1' });
+      const result = await adapter.readTable({ tableRemId: 'table-1' });
 
       expect(result.tableId).toBe('table-1');
       expect(result.tableName).toBe('Test Table');
@@ -1839,7 +1839,7 @@ describe('RemAdapter', () => {
     });
 
     it('should lookup table by name', async () => {
-      // Create a table rem registered by name
+      // Create a table rem discoverable via search/title matching
       const tableRem = plugin.addTestRem('table-projects', 'Projects', 'Projects');
       const prop1 = new MockRem('proj-prop-1', 'Status');
       prop1.setIsPropertyMock(true);
@@ -1850,7 +1850,7 @@ describe('RemAdapter', () => {
       row1.setTagPropertyValueMock('proj-prop-1', ['Active']);
       tableRem.setTaggedRemsMock([row1]);
 
-      const result = await adapter.readTable({ tableNameOrId: 'Projects' });
+      const result = await adapter.readTable({ tableTitle: 'Projects' });
 
       expect(result.tableId).toBe('table-projects');
       expect(result.tableName).toBe('Projects');
@@ -1858,10 +1858,45 @@ describe('RemAdapter', () => {
       expect(result.rows).toHaveLength(1);
     });
 
+    it('should throw error when multiple exact-title tables match', async () => {
+      const tableA = plugin.addTestRem('table-projects-a', 'Projects A');
+      await tableA.setText(['Projects']);
+      const propA = new MockRem('proj-prop-a', 'Status');
+      propA.setIsPropertyMock(true);
+      await propA.setParent(tableA);
+
+      const tableB = plugin.addTestRem('table-projects-b', 'Projects B');
+      await tableB.setText(['Projects']);
+      const propB = new MockRem('proj-prop-b', 'Status');
+      propB.setIsPropertyMock(true);
+      await propB.setParent(tableB);
+
+      await expect(adapter.readTable({ tableTitle: 'Projects' })).rejects.toThrow(
+        "Multiple tables found with exact title: 'Projects'"
+      );
+    });
+
+    it('should throw error when exact title match is not a table', async () => {
+      plugin.addTestRem('projects-note', 'Projects', 'Projects');
+
+      await expect(adapter.readTable({ tableTitle: 'Projects' })).rejects.toThrow(
+        "Rem found for 'Projects' is not a table"
+      );
+    });
+
     it('should throw error when table not found', async () => {
-      await expect(adapter.readTable({ tableNameOrId: 'nonexistent' })).rejects.toThrow(
+      await expect(adapter.readTable({ tableTitle: 'nonexistent' })).rejects.toThrow(
         "Table not found: 'nonexistent'"
       );
+    });
+
+    it('should require exactly one table identifier', async () => {
+      await expect(adapter.readTable({})).rejects.toThrow(
+        'Provide exactly one of tableRemId or tableTitle'
+      );
+      await expect(
+        adapter.readTable({ tableRemId: 'table-1', tableTitle: 'Projects' })
+      ).rejects.toThrow('Provide exactly one of tableRemId or tableTitle');
     });
 
     it('should throw error when rem has no properties', async () => {
@@ -1869,7 +1904,7 @@ describe('RemAdapter', () => {
       const _nonTableRem = plugin.addTestRem('not-a-table', 'Just a Note');
       // No property children set
 
-      await expect(adapter.readTable({ tableNameOrId: 'not-a-table' })).rejects.toThrow(
+      await expect(adapter.readTable({ tableRemId: 'not-a-table' })).rejects.toThrow(
         "Rem 'not-a-table' has no properties — not a table"
       );
     });
@@ -1893,7 +1928,7 @@ describe('RemAdapter', () => {
 
       tableRem.setTaggedRemsMock([]);
 
-      const result = await adapter.readTable({ tableNameOrId: 'table-columns' });
+      const result = await adapter.readTable({ tableRemId: 'table-columns' });
 
       expect(result.columns).toHaveLength(2);
       expect(result.columns.map((c) => c.propertyId)).toContain('mc-prop-1');
@@ -1914,7 +1949,7 @@ describe('RemAdapter', () => {
       row2.setTagPropertyValueMock('row-prop-1', ['Second Task Value']);
       tableRem.setTaggedRemsMock([row1, row2]);
 
-      const result = await adapter.readTable({ tableNameOrId: 'table-rows' });
+      const result = await adapter.readTable({ tableRemId: 'table-rows' });
 
       expect(result.rows).toHaveLength(2);
       expect(result.rows[0].remId).toBe('test-row-1');
@@ -1940,7 +1975,7 @@ describe('RemAdapter', () => {
       ]);
       tableRem.setTaggedRemsMock([row1]);
 
-      const result = await adapter.readTable({ tableNameOrId: 'table-rich' });
+      const result = await adapter.readTable({ tableRemId: 'table-rich' });
 
       // The value should contain the rendered text
       expect(result.rows[0].values['rich-prop-1']).toContain('Hello');
@@ -1959,7 +1994,7 @@ describe('RemAdapter', () => {
       // Don't set any property value - should return empty string
       tableRem.setTaggedRemsMock([row1]);
 
-      const result = await adapter.readTable({ tableNameOrId: 'table-empty' });
+      const result = await adapter.readTable({ tableRemId: 'table-empty' });
 
       expect(result.rows[0].values['empty-prop-1']).toBe('');
     });
@@ -1981,7 +2016,7 @@ describe('RemAdapter', () => {
       tableRem.setTaggedRemsMock(rows);
 
       const result = await adapter.readTable({
-        tableNameOrId: 'table-pagination',
+        tableRemId: 'table-pagination',
         limit: 3,
         offset: 2,
       });
@@ -2011,7 +2046,7 @@ describe('RemAdapter', () => {
       tableRem.setTaggedRemsMock(rows);
 
       const result = await adapter.readTable({
-        tableNameOrId: 'table-offset',
+        tableRemId: 'table-offset',
         limit: 5,
         offset: 15,
       });
@@ -2046,7 +2081,7 @@ describe('RemAdapter', () => {
       tableRem.setTaggedRemsMock([row1]);
 
       const result = await adapter.readTable({
-        tableNameOrId: 'table-filter',
+        tableRemId: 'table-filter',
         propertyFilter: ['Status'],
       });
 
@@ -2069,7 +2104,7 @@ describe('RemAdapter', () => {
       tableRem.setTaggedRemsMock([row1]);
 
       const result = await adapter.readTable({
-        tableNameOrId: 'table-unknown-filter',
+        tableRemId: 'table-unknown-filter',
         propertyFilter: ['Nonexistent'],
       });
 

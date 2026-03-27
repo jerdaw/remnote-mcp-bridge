@@ -72,7 +72,8 @@ export interface UpdateNoteParams {
 }
 
 export interface ReadTableParams {
-  tableNameOrId: string;
+  tableRemId?: string;
+  tableTitle?: string;
   limit?: number;
   offset?: number;
   propertyFilter?: string[];
@@ -832,6 +833,89 @@ export class RemAdapter {
     return null;
   }
 
+  private normalizeLookupText(text: string): string {
+    return text.trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+
+  private async isTableRem(rem: PluginRem): Promise<boolean> {
+    if ('isTable' in rem && typeof rem.isTable === 'function') {
+      try {
+        if (await rem.isTable()) {
+          return true;
+        }
+      } catch {
+        // Fall through to property-child detection when SDK table detection is unavailable.
+      }
+    }
+
+    const children = await rem.getChildrenRem();
+    for (const child of children) {
+      if (await child.isProperty()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private async resolveTableRem(params: ReadTableParams): Promise<PluginRem> {
+    const tableRemId = params.tableRemId?.trim();
+    const tableTitle = params.tableTitle?.trim();
+
+    if ((!tableRemId && !tableTitle) || (tableRemId && tableTitle)) {
+      throw new Error('Provide exactly one of tableRemId or tableTitle');
+    }
+
+    if (tableRemId) {
+      const remById = await this.plugin.rem.findOne(tableRemId);
+      if (remById) {
+        return remById;
+      }
+      throw new Error(`Table not found: '${tableRemId}'`);
+    }
+
+    const searchResults = await this.plugin.search.search(
+      this.textToRichText(tableTitle!),
+      undefined,
+      { numResults: this.getSearchSdkFetchLimit(DEFAULT_SEARCH_LIMIT) }
+    );
+
+    const normalizedIdentifier = this.normalizeLookupText(tableTitle!);
+    const exactMatches: PluginRem[] = [];
+    const seen = new Set<string>();
+
+    for (const rem of searchResults) {
+      if (seen.has(rem._id)) continue;
+      seen.add(rem._id);
+
+      const title = this.normalizeLookupText(await this.extractText(rem.text));
+      if (title === normalizedIdentifier) {
+        exactMatches.push(rem);
+      }
+    }
+
+    const tableMatches: PluginRem[] = [];
+    for (const rem of exactMatches) {
+      if (await this.isTableRem(rem)) {
+        tableMatches.push(rem);
+      }
+    }
+
+    if (tableMatches.length === 1) {
+      return tableMatches[0];
+    }
+
+    if (tableMatches.length > 1) {
+      throw new Error(`Multiple tables found with exact title: '${tableTitle}'`);
+    }
+
+    if (exactMatches.length > 0) {
+      throw new Error(`Rem found for '${tableTitle}' is not a table`);
+    }
+
+    throw new Error(`Table not found: '${tableTitle}'`);
+  }
+
   private async renderContentStructured(
     rem: PluginRem,
     depth: number,
@@ -1396,15 +1480,8 @@ export class RemAdapter {
     const limit = params.limit ?? 50;
     const offset = params.offset ?? 0;
 
-    // 1. Resolve table rem: try by ID first, then by name
-    let tableRem = await this.plugin.rem.findOne(params.tableNameOrId);
-    if (!tableRem) {
-      const tagRem = await this.findTagRem(params.tableNameOrId);
-      tableRem = tagRem ?? undefined;
-    }
-    if (!tableRem) {
-      throw new Error(`Table not found: '${params.tableNameOrId}'`);
-    }
+    // 1. Resolve table rem from one explicit identifier
+    const tableRem = await this.resolveTableRem(params);
 
     // 2. Extract columns: get children, filter by isProperty()
     const children = await tableRem.getChildrenRem();

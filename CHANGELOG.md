@@ -10,7 +10,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 - New `readTable()` method in RemAdapter for reading Advanced Table properties and cell values
 - New `read_table` action in runtime router for WebSocket bridge communication
-- Support for table lookup by Rem ID or tag name, pagination (limit/offset), and column filtering (propertyFilter)
+- Support for table lookup by Rem ID or exact title, pagination (limit/offset), and column filtering (propertyFilter)
+
+### Changed
+- Updated `read_table` bridge payloads to require exactly one explicit identifier: `tableRemId` or `tableTitle`.
 
 ### Documentation
 - Added a dedicated pull request guide covering required docs, tests, cross-repo parity, integration-test updates,
@@ -22,6 +25,9 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   updates.
 - Updated the README bridge action surface to include `read_table` and align action names with the actual bridge
   payload contract.
+
+### Fixed
+- Fixed `read_table` name lookup to resolve Advanced Tables by exact title search instead of tag-style name matching.
 
 ## [0.10.2] - 2026-03-25
 

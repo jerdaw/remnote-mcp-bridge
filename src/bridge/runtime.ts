@@ -336,7 +336,8 @@ class BridgeRuntimeController implements BridgeRuntime {
 
       case 'read_table': {
         const result = await this.adapter.readTable({
-          tableNameOrId: payload.tableNameOrId as string,
+          tableRemId: payload.tableRemId as string | undefined,
+          tableTitle: payload.tableTitle as string | undefined,
           limit: payload.limit as number | undefined,
           offset: payload.offset as number | undefined,
           propertyFilter: payload.propertyFilter as string[] | undefined,

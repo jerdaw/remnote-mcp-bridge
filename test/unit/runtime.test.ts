@@ -139,7 +139,7 @@ describe('Bridge runtime', () => {
           id: 'devtools-read-table',
           action: 'read_table',
           payload: {
-            tableNameOrId: 'TestTable',
+            tableTitle: 'TestTable',
             limit: 10,
             offset: 0,
           },
