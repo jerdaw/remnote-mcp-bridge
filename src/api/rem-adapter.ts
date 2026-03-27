@@ -1455,6 +1455,8 @@ export class RemAdapter {
     }
 
     // 3. Extract rows: get tagged rems
+    // TODO: Replace this full fetch + slice with SDK-level pagination or chunked iteration once available.
+    // Large tables currently require loading every tagged row before applying limit/offset here.
     const allTaggedRems =
       'taggedRem' in tableRem && typeof tableRem.taggedRem === 'function'
         ? await tableRem.taggedRem()

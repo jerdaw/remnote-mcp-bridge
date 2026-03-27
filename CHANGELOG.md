@@ -12,6 +12,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - New `read_table` action in runtime router for WebSocket bridge communication
 - Support for table lookup by Rem ID or tag name, pagination (limit/offset), and column filtering (propertyFilter)
 
+### Documentation
+- Updated the README bridge action surface to include `read_table` and align action names with the actual bridge
+  payload contract.
+
 ## [0.10.0] - 2026-03-18
 
 ### Added
