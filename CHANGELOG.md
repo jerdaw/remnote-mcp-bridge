@@ -27,6 +27,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   payload contract.
 - Clarified agent instructions for cross-repo live integration runs: ask the human collaborator to start the bridge
   first, and ask for a bridge restart after bridge-code changes before reruns.
+- Clarified that switching between CLI and MCP server live integration tests requires stopping the other companion
+  process first because both compete for the same WebSocket port.
 
 ### Fixed
 - Fixed `read_table` name lookup to resolve Advanced Tables by exact title search instead of tag-style name matching.
