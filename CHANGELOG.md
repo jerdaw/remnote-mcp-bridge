@@ -28,6 +28,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 - Fixed `read_table` name lookup to resolve Advanced Tables by exact title search instead of tag-style name matching.
+- Fixed `read_table` title lookup to prefer same-title rems with actual property columns over wrapper/container rems
+  that only share the visible title.
 
 ## [0.10.2] - 2026-03-25
 

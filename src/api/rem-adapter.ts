@@ -837,25 +837,46 @@ export class RemAdapter {
     return text.trim().replace(/\s+/g, ' ').toLowerCase();
   }
 
-  private async isTableRem(rem: PluginRem): Promise<boolean> {
-    if ('isTable' in rem && typeof rem.isTable === 'function') {
-      try {
-        if (await rem.isTable()) {
-          return true;
-        }
-      } catch {
-        // Fall through to property-child detection when SDK table detection is unavailable.
-      }
-    }
-
+  private async getTablePropertyChildren(rem: PluginRem): Promise<PluginRem[]> {
     const children = await rem.getChildrenRem();
+    const propertyChildren: PluginRem[] = [];
+
     for (const child of children) {
       if (await child.isProperty()) {
-        return true;
+        propertyChildren.push(child);
       }
     }
 
-    return false;
+    return propertyChildren;
+  }
+
+  private async collectExactTitleCandidates(
+    rem: PluginRem,
+    normalizedTitle: string,
+    seen: Set<string>
+  ): Promise<PluginRem[]> {
+    const collected: PluginRem[] = [];
+    const queue: PluginRem[] = [rem];
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (seen.has(current._id)) {
+        continue;
+      }
+
+      const title = this.normalizeLookupText(await this.extractText(current.text));
+      if (title !== normalizedTitle) {
+        continue;
+      }
+
+      seen.add(current._id);
+      collected.push(current);
+
+      const children = await current.getChildrenRem();
+      queue.push(...children);
+    }
+
+    return collected;
   }
 
   private async resolveTableRem(params: ReadTableParams): Promise<PluginRem> {
@@ -885,18 +906,14 @@ export class RemAdapter {
     const seen = new Set<string>();
 
     for (const rem of searchResults) {
-      if (seen.has(rem._id)) continue;
-      seen.add(rem._id);
-
-      const title = this.normalizeLookupText(await this.extractText(rem.text));
-      if (title === normalizedIdentifier) {
-        exactMatches.push(rem);
-      }
+      const candidates = await this.collectExactTitleCandidates(rem, normalizedIdentifier, seen);
+      exactMatches.push(...candidates);
     }
 
     const tableMatches: PluginRem[] = [];
     for (const rem of exactMatches) {
-      if (await this.isTableRem(rem)) {
+      const propertyChildren = await this.getTablePropertyChildren(rem);
+      if (propertyChildren.length > 0) {
         tableMatches.push(rem);
       }
     }
@@ -1484,13 +1501,7 @@ export class RemAdapter {
     const tableRem = await this.resolveTableRem(params);
 
     // 2. Extract columns: get children, filter by isProperty()
-    const children = await tableRem.getChildrenRem();
-    const propertyChildren: PluginRem[] = [];
-    for (const child of children) {
-      if (await child.isProperty()) {
-        propertyChildren.push(child);
-      }
-    }
+    const propertyChildren = await this.getTablePropertyChildren(tableRem);
 
     // Check for no properties BEFORE applying filter
     if (propertyChildren.length === 0) {

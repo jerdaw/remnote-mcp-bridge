@@ -1858,6 +1858,29 @@ describe('RemAdapter', () => {
       expect(result.rows).toHaveLength(1);
     });
 
+    it('should prefer same-title child table over wrapper rem', async () => {
+      const wrapperRem = plugin.addTestRem('projects-wrapper', 'Projects');
+      wrapperRem.setIsTableMock(true);
+
+      const tableRem = plugin.addTestRem('projects-table', 'Projects');
+      await tableRem.setParent(wrapperRem);
+
+      const prop1 = new MockRem('projects-prop-1', 'Status');
+      prop1.setIsPropertyMock(true);
+      await prop1.setParent(tableRem);
+
+      const row1 = new MockRem('projects-row-1', 'Project Alpha');
+      row1.setTagPropertyValueMock('projects-prop-1', ['Active']);
+      tableRem.setTaggedRemsMock([row1]);
+
+      const result = await adapter.readTable({ tableTitle: 'Projects' });
+
+      expect(result.tableId).toBe('projects-table');
+      expect(result.tableName).toBe('Projects');
+      expect(result.columns).toHaveLength(1);
+      expect(result.rows).toHaveLength(1);
+    });
+
     it('should throw error when multiple exact-title tables match', async () => {
       const tableA = plugin.addTestRem('table-projects-a', 'Projects A');
       await tableA.setText(['Projects']);
