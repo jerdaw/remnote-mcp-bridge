@@ -19,6 +19,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   compatibility.
 
 ### Documentation
+- Removed the README beta status badge.
 - Removed the README's "still experimental" wording and kept the issue-reporting link.
 
 ## [0.11.0] - 2026-03-27

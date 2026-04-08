@@ -6,7 +6,7 @@ bridge. It is the shared RemNote endpoint for two first-class companion paths:
 - **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)** for MCP-compatible AI assistants
 - **[RemNote CLI](https://github.com/robert7/remnote-cli)** for scripts, local agents, and CLI-first workflows
 
-![Status](https://img.shields.io/badge/status-beta-yellow) ![License](https://img.shields.io/badge/license-MIT-blue)
+![License](https://img.shields.io/badge/license-MIT-blue)
 ![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
 [![codecov](https://codecov.io/gh/robert7/remnote-mcp-bridge/branch/main/graph/badge.svg)](https://codecov.io/gh/robert7/remnote-mcp-bridge)
 
