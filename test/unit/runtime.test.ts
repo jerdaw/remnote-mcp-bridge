@@ -198,17 +198,17 @@ describe('Bridge runtime', () => {
     MockWebSocket.instances.at(-1)?.simulateMessage({
       type: 'companion_info',
       kind: 'mcp-server',
-      version: '0.11.0',
+      version: '0.12.0',
     });
     await wait(10);
 
     const snapshot = runtime.getSnapshot();
     expect(snapshot.companion).toEqual({
       kind: 'mcp-server',
-      version: '0.11.0',
+      version: '0.12.0',
     });
     expect(
-      snapshot.logs.some((entry) => entry.message.includes('Companion ready: MCP server v0.11.0'))
+      snapshot.logs.some((entry) => entry.message.includes('Companion ready: MCP server v0.12.0'))
     ).toBe(true);
   });
 
