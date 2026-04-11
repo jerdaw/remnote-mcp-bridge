@@ -113,9 +113,10 @@ background bridge runtime.
 
 For the full connection/reconnect behavior, see the [Connection Lifecycle Guide](docs/guides/connection-lifecycle.md).
 
-Related setup/testing guide:
+Related setup/testing guides:
 
-- [Execute Bridge Commands from RemNote Developer Console (Screenshot Walkthrough)](docs/guides/development-execute-bridge-commands-screenshots.md)
+- [Execute Bridge Commands from RemNote Developer Console](docs/guides/development-execute-bridge-commands.md)
+- [Execute Bridge Commands — Screenshot Walkthrough](docs/guides/development-execute-bridge-commands-screenshots.md)
 
 ### 2. Choose Your Companion Path
 
@@ -167,6 +168,12 @@ visibility/online events, see the [Connection Lifecycle
 Guide](docs/guides/connection-lifecycle.md).
 
 ## Important Limitations
+
+### Tag Readback
+
+There is a current gap between the bridge contract and live RemNote SDK behavior for readable tag metadata on `read_note` and plain `search` results. See [Tag Readback Limitations](docs/tag-readback-limitations.md) for details.
+
+### Single Connection
 
 The system enforces a **single RemNote plugin connection** to one companion process at a time. This means:
 
@@ -262,6 +269,15 @@ For RemNote domain concepts relevant to bridge behavior, see:
 - [RemNote Domain Reference](docs/reference/remnote/README.md)
 
 ## Development
+
+### Guides
+
+- [Run the Plugin Locally](docs/guides/development-run-plugin-locally.md) — Load the plugin from source into RemNote for local development and testing.
+- [Execute Bridge Commands from Developer Console](docs/guides/development-execute-bridge-commands.md) — Run bridge actions directly in the RemNote plugin console without the MCP server or CLI in the middle.
+- [Execute Bridge Commands — Screenshot Walkthrough](docs/guides/development-execute-bridge-commands-screenshots.md) — Visual companion to the console guide above.
+- [Pull Request Guide](docs/guides/pull-request-guide.md) — Cross-repo PR policy and submission checklist.
+
+### Commands
 
 ```bash
 # Install dependencies
