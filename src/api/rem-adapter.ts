@@ -113,6 +113,7 @@ export interface SearchResultItem {
   parentRemId?: string;
   parentTitle?: string;
   aliases?: string[];
+  tags?: string[];
   remType: RemClassification;
   cardDirection?: CardDirection;
   content?: string;
@@ -126,6 +127,7 @@ export interface StructuredContentNode {
   headline: string;
   remType: RemClassification;
   aliases?: string[];
+  tags?: string[];
   cardDirection?: CardDirection;
   children?: StructuredContentNode[];
 }
@@ -198,6 +200,8 @@ interface SearchContentOptions {
   childLimit: number;
   maxContentLength: number;
 }
+
+type TagNameCache = Map<string, string | null>;
 
 const SEARCH_INCLUDE_CONTENT_MODES: readonly SearchIncludeContentMode[] = [
   'none',
@@ -464,6 +468,49 @@ export class RemAdapter {
       const text = await this.extractText(aliasRem.text);
       if (text) results.push(text);
     }
+    return results;
+  }
+
+  /**
+   * Resolve human-readable tag names for a Rem.
+   *
+   * The SDK typing in this repo does not clearly expose a tag-read method, so this helper
+   * uses feature detection and falls back to no tags when unavailable.
+   */
+  private async getTagNames(rem: PluginRem, tagNameCache: TagNameCache): Promise<string[]> {
+    const getTags = (rem as unknown as { getTags?: () => string[] | Promise<string[]> }).getTags;
+    if (typeof getTags !== 'function') return [];
+
+    let tagIds: string[];
+    try {
+      const resolved = await Promise.resolve(getTags.call(rem));
+      tagIds = Array.isArray(resolved)
+        ? resolved.filter((id): id is string => typeof id === 'string')
+        : [];
+    } catch {
+      return [];
+    }
+
+    if (tagIds.length === 0) return [];
+
+    const results: string[] = [];
+    const seen = new Set<string>();
+
+    for (const tagId of tagIds) {
+      if (!tagId) continue;
+
+      let tagName = tagNameCache.get(tagId);
+      if (tagName === undefined) {
+        const tagRem = await this.plugin.rem.findOne(tagId);
+        tagName = tagRem ? (await this.extractText(tagRem.text)) || null : null;
+        tagNameCache.set(tagId, tagName);
+      }
+
+      if (!tagName || seen.has(tagName)) continue;
+      seen.add(tagName);
+      results.push(tagName);
+    }
+
     return results;
   }
 
@@ -735,17 +782,20 @@ export class RemAdapter {
   private async buildSearchResultItem(
     rem: PluginRem,
     sourceIndex: number,
-    options: SearchContentOptions
+    options: SearchContentOptions,
+    tagNameCache: TagNameCache
   ): Promise<SearchResultItem & { _sourceIndex: number }> {
-    const [{ title, detail }, remType, cardDirection, aliases, parentContext] = await Promise.all([
-      this.getTitleAndDetail(rem),
-      this.classifyRem(rem),
-      rem.backText
-        ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
-        : Promise.resolve(undefined),
-      this.getAliases(rem),
-      this.getParentContext(rem),
-    ]);
+    const [{ title, detail }, remType, cardDirection, aliases, tags, parentContext] =
+      await Promise.all([
+        this.getTitleAndDetail(rem),
+        this.classifyRem(rem),
+        rem.backText
+          ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
+          : Promise.resolve(undefined),
+        this.getAliases(rem),
+        this.getTagNames(rem, tagNameCache),
+        this.getParentContext(rem),
+      ]);
 
     const headline = this.formatHeadline(title, detail, remType);
 
@@ -768,7 +818,8 @@ export class RemAdapter {
       const structuredChildren = await this.renderContentStructured(
         rem,
         options.depth,
-        options.childLimit
+        options.childLimit,
+        tagNameCache
       );
       if (structuredChildren.length > 0) {
         contentStructured = structuredChildren;
@@ -781,6 +832,7 @@ export class RemAdapter {
       headline,
       ...parentContext,
       ...(aliases.length > 0 ? { aliases } : {}),
+      ...(tags.length > 0 ? { tags } : {}),
       remType,
       ...(cardDirection ? { cardDirection } : {}),
       ...(content ? { content } : {}),
@@ -936,7 +988,8 @@ export class RemAdapter {
   private async renderContentStructured(
     rem: PluginRem,
     depth: number,
-    childLimit: number
+    childLimit: number,
+    tagNameCache: TagNameCache
   ): Promise<StructuredContentNode[]> {
     if (depth <= 0) return [];
 
@@ -945,16 +998,22 @@ export class RemAdapter {
     const results: StructuredContentNode[] = [];
 
     for (const child of limitedChildren) {
-      const [{ title, detail }, remType, cardDirection, aliases] = await Promise.all([
+      const [{ title, detail }, remType, cardDirection, aliases, tags] = await Promise.all([
         this.getTitleAndDetail(child),
         this.classifyRem(child),
         child.backText
           ? child.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
           : Promise.resolve(undefined),
         this.getAliases(child),
+        this.getTagNames(child, tagNameCache),
       ]);
 
-      const children = await this.renderContentStructured(child, depth - 1, childLimit);
+      const children = await this.renderContentStructured(
+        child,
+        depth - 1,
+        childLimit,
+        tagNameCache
+      );
 
       results.push({
         remId: child._id,
@@ -962,6 +1021,7 @@ export class RemAdapter {
         headline: this.formatHeadline(title, detail, remType),
         remType,
         ...(aliases.length > 0 ? { aliases } : {}),
+        ...(tags.length > 0 ? { tags } : {}),
         ...(cardDirection ? { cardDirection } : {}),
         ...(children.length > 0 ? { children } : {}),
       });
@@ -1245,6 +1305,7 @@ export class RemAdapter {
     const limit = params.limit ?? DEFAULT_SEARCH_LIMIT;
     const options = this.getSearchContentOptions(params);
     const sdkFetchLimit = this.getSearchSdkFetchLimit(limit);
+    const tagNameCache: TagNameCache = new Map();
 
     // Use the search API - query must be RichTextInterface
     const searchResults = await this.plugin.search.search(
@@ -1261,7 +1322,7 @@ export class RemAdapter {
       if (seen.has(rem._id)) continue;
       seen.add(rem._id);
 
-      const item = await this.buildSearchResultItem(rem, sourceIndex++, options);
+      const item = await this.buildSearchResultItem(rem, sourceIndex++, options, tagNameCache);
       collected.push(item);
     }
 
@@ -1302,6 +1363,7 @@ export class RemAdapter {
 
     const options = this.getSearchContentOptions(params);
     const limit = params.limit ?? DEFAULT_SEARCH_LIMIT;
+    const tagNameCache: TagNameCache = new Map();
     const taggedRems =
       'taggedRem' in tagRem && typeof tagRem.taggedRem === 'function'
         ? await tagRem.taggedRem()
@@ -1316,7 +1378,12 @@ export class RemAdapter {
       if (seenTargets.has(targetRem._id)) continue;
       seenTargets.add(targetRem._id);
 
-      const item = await this.buildSearchResultItem(targetRem, sourceIndex++, options);
+      const item = await this.buildSearchResultItem(
+        targetRem,
+        sourceIndex++,
+        options,
+        tagNameCache
+      );
       collected.push(item);
     }
 
@@ -1344,6 +1411,7 @@ export class RemAdapter {
     parentRemId?: string;
     parentTitle?: string;
     aliases?: string[];
+    tags?: string[];
     remType: RemClassification;
     cardDirection?: CardDirection;
     content?: string;
@@ -1361,15 +1429,18 @@ export class RemAdapter {
       throw new Error(`Note not found: ${params.remId}`);
     }
 
-    const [{ title, detail }, remType, cardDirection, aliases, parentContext] = await Promise.all([
-      this.getTitleAndDetail(rem),
-      this.classifyRem(rem),
-      rem.backText
-        ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
-        : Promise.resolve(undefined),
-      this.getAliases(rem),
-      this.getParentContext(rem),
-    ]);
+    const tagNameCache: TagNameCache = new Map();
+    const [{ title, detail }, remType, cardDirection, aliases, tags, parentContext] =
+      await Promise.all([
+        this.getTitleAndDetail(rem),
+        this.classifyRem(rem),
+        rem.backText
+          ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
+          : Promise.resolve(undefined),
+        this.getAliases(rem),
+        this.getTagNames(rem, tagNameCache),
+        this.getParentContext(rem),
+      ]);
 
     const headline = this.formatHeadline(title, detail, remType);
 
@@ -1388,7 +1459,12 @@ export class RemAdapter {
       content = renderResult.content;
       contentProperties = await this.buildContentProperties(rem, renderResult, depth);
     } else if (includeContent === 'structured') {
-      const structuredChildren = await this.renderContentStructured(rem, depth, childLimit);
+      const structuredChildren = await this.renderContentStructured(
+        rem,
+        depth,
+        childLimit,
+        tagNameCache
+      );
       if (structuredChildren.length > 0) {
         contentStructured = structuredChildren;
       }
@@ -1400,6 +1476,7 @@ export class RemAdapter {
       headline,
       ...parentContext,
       ...(aliases.length > 0 ? { aliases } : {}),
+      ...(tags.length > 0 ? { tags } : {}),
       remType,
       ...(cardDirection ? { cardDirection } : {}),
       ...(content !== undefined ? { content } : {}),

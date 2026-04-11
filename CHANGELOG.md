@@ -7,6 +7,13 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Added optional `tags` metadata to `search`, `search_by_tag`, and `read_note`, including structured child nodes
+  when `includeContent: "structured"` is used.
+
+### Documentation
+- Updated the bridge search/read contract and README to document readable tag metadata on note retrieval surfaces.
+
 ## [0.12.0] - 2026-04-09
 
 ### Changed

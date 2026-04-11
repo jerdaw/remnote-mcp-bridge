@@ -53,7 +53,7 @@ connection point that both companion apps can target:
 
 - **Create Notes & Flashcards** - Create simple notes, hierarchical markdown trees, or RemNote-native flashcards
 - **Search Knowledge Base** - Full-text search across your Rems, plus tag-based search with ancestor context
-- **Read Notes** - Read notes with markdown or structured child content for follow-up navigation
+- **Read Notes** - Read notes with tags plus markdown or structured child content for follow-up navigation
 - **Update Notes** - Rename notes, append or replace hierarchical content, and manage tags
 - **Daily Journal** - Append entries to today's daily document, including hierarchical markdown content
 
@@ -202,9 +202,9 @@ the CLI maps them to commands:
 | Action | Description |
 |------|-------------|
 | `create_note` | Create notes, markdown trees, or flashcards with title, content, parent, and tags |
-| `search` | Search the knowledge base with query and filters |
+| `search` | Search the knowledge base with query, filters, and note metadata (including tags) |
 | `search_by_tag` | Search by tag with ancestor context and content controls |
-| `read_note` | Read a note's content in markdown or structured form by ID |
+| `read_note` | Read a note's metadata, tags, and content in markdown or structured form by ID |
 | `update_note` | Update title, append or replace content, add/remove tags |
 | `append_journal` | Add hierarchical markdown content to today's daily document |
 | `read_table` | Read Advanced Table columns, rows, and typed property metadata |
