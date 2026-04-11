@@ -1,7 +1,7 @@
 # Execute Bridge Commands from RemNote Developer Console
 
-Use this guide to execute bridge actions directly inside the RemNote plugin iframe and inspect raw results, without the
-MCP server or CLI in the middle.
+Use this guide to execute bridge actions directly inside the RemNote plugin runtime console context and inspect raw
+results, without the MCP server or CLI in the middle.
 
 Visual walkthrough:
 
@@ -18,7 +18,11 @@ This path runs through the same action handler used by WebSocket requests in `sr
 2. Open RemNote Developer Tools:
    - macOS: `Cmd+Option+I`
    - Windows/Linux: `Ctrl+Shift+I`
-3. In the Developer Console context picker, select the plugin iframe context (not the top page context).
+3. In the Developer Console context picker, select the non-highlighted plugin runtime context:
+   - You will usually see two `index.html (localhost:8080)` entries.
+   - Choose the one that does **not** highlight the visible Automation Bridge sidebar/plugin iframe.
+   - If selecting a context highlights the visible sidebar/plugin, that is usually the wrong one for these helper
+     scripts and requests will time out.
 
 The bridge runtime now starts automatically on plugin activation. Opening the Automation Bridge sidebar panel is
 optional here and mainly helps if you want to keep status/logs visible while debugging. For connection and reconnect
@@ -71,7 +75,10 @@ Use a known Rem ID (for example `testRemId` from `create_note`).
 
 ## Troubleshooting
 
-- `Timed out waiting for result...`: Usually wrong console execution context. Re-select plugin iframe context.
+- `Timed out waiting for result...`: Usually wrong console execution context. Re-select the non-highlighted
+  `localhost:8080` plugin runtime context.
+- If the selected `localhost:8080` context highlights the visible Automation Bridge sidebar/plugin, switch to the
+  other `localhost:8080` entry.
 - After Chrome/RemNote restart, there can be multiple `index.html (localhost:8080)` contexts in DevTools. If one
   times out, switch to the other `localhost:8080` context, paste helper again, and retry.
 - If you want a visual connection check while debugging, open the Automation Bridge panel. The background runtime still

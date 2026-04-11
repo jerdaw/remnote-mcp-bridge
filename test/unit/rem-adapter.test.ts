@@ -758,9 +758,62 @@ describe('RemAdapter', () => {
       expect(result.results[0].aliases).toEqual(['Alt Name 1', 'Alt Name 2']);
     });
 
+    it('should include tags in search results when present', async () => {
+      plugin.clearTestData();
+      const workTag = plugin.addTestRem('tag_work', 'work');
+      const urgentTag = plugin.addTestRem('tag_urgent', 'urgent');
+      const rem = plugin.addTestRem('tagged_search', 'Tagged Search Note');
+      await rem.addTag(workTag._id);
+      await rem.addTag(urgentTag._id);
+
+      plugin.search.search.mockResolvedValueOnce([rem]);
+
+      const result = await adapter.search({ query: 'Tagged' });
+      expect(result.results[0].tags).toEqual(['work', 'urgent']);
+    });
+
+    it('should include tags in search results when getTags returns tag rem objects', async () => {
+      plugin.clearTestData();
+      const workTag = plugin.addTestRem('tag_work_object', 'work');
+      const urgentTag = plugin.addTestRem('tag_urgent_object', 'urgent');
+      const rem = plugin.addTestRem('tagged_search_object', 'Tagged Search Note');
+      rem.getTags = vi.fn(async () => [workTag, urgentTag]) as unknown as typeof rem.getTags;
+
+      plugin.search.search.mockResolvedValueOnce([rem]);
+
+      const result = await adapter.search({ query: 'Tagged' });
+      expect(result.results[0].tags).toEqual(['work', 'urgent']);
+    });
+
     it('should omit aliases when empty', async () => {
       const result = await adapter.search({ query: 'note' });
       expect(result.results[0].aliases).toBeUndefined();
+    });
+
+    it('should include tags on structured search child nodes when present', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_tags_struct_parent', 'Parent');
+      const child = new MockRem('search_tags_struct_child', 'Tagged Child');
+      const childTag = plugin.addTestRem('search_tags_child_tag', 'next-action');
+      await child.setParent(parent);
+      await child.addTag(childTag._id);
+
+      plugin.search.search.mockResolvedValueOnce([parent]);
+
+      const result = await adapter.search({
+        query: 'Parent',
+        includeContent: 'structured',
+      });
+
+      expect(result.results[0].contentStructured).toEqual([
+        {
+          remId: 'search_tags_struct_child',
+          title: 'Tagged Child',
+          headline: 'Tagged Child',
+          remType: 'text',
+          tags: ['next-action'],
+        },
+      ]);
     });
 
     it('should pass depth and childLimit to markdown rendering', async () => {
@@ -925,6 +978,18 @@ describe('RemAdapter', () => {
       const none = await adapter.searchByTag({ tag: 'mode', includeContent: 'none' });
       expect(none.results[0].content).toBeUndefined();
       expect(none.results[0].contentStructured).toBeUndefined();
+    });
+
+    it('should include tags from the resolved target when present', async () => {
+      plugin.clearTestData();
+      const queryTag = plugin.addTestRem('tag_query', 'project', 'project');
+      const targetTag = plugin.addTestRem('tag_target', 'work');
+      const note = plugin.addTestRem('tag_target_note', 'Tagged target');
+      await note.addTag(targetTag._id);
+      queryTag.setTaggedRemsMock([note]);
+
+      const result = await adapter.searchByTag({ tag: 'project' });
+      expect(result.results[0].tags).toEqual(['work']);
     });
 
     it('should return empty results when tag is not found', async () => {
@@ -1140,11 +1205,116 @@ describe('RemAdapter', () => {
       expect(result.aliases).toEqual(['Alias One', 'Alias Two']);
     });
 
+    it('should include tags when present on read results', async () => {
+      const workTag = plugin.addTestRem('read_tag_work', 'work');
+      const urgentTag = plugin.addTestRem('read_tag_urgent', 'urgent');
+      const rem = plugin.addTestRem('tagged_read', 'Tagged Read Note');
+      await rem.addTag(workTag._id);
+      await rem.addTag(urgentTag._id);
+
+      const result = await adapter.readNote({ remId: 'tagged_read', includeContent: 'none' });
+      expect(result.tags).toEqual(['work', 'urgent']);
+    });
+
+    it('should include tags on read results when getTags returns tag rem objects', async () => {
+      const workTag = plugin.addTestRem('read_tag_work_object', 'work');
+      const urgentTag = plugin.addTestRem('read_tag_urgent_object', 'urgent');
+      const rem = plugin.addTestRem('tagged_read_object', 'Tagged Read Note');
+      rem.getTags = vi.fn(async () => [workTag, urgentTag]) as unknown as typeof rem.getTags;
+
+      const result = await adapter.readNote({
+        remId: 'tagged_read_object',
+        includeContent: 'none',
+      });
+      expect(result.tags).toEqual(['work', 'urgent']);
+    });
+
+    it('should log child metadata when getTags is missing on read results', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const rem = plugin.addTestRem('tagged_read_debug', 'Tagged Read Debug Note');
+      rem.getTags = undefined as unknown as typeof rem.getTags;
+      (plugin.rem as Record<string, unknown>).getAll = vi.fn(async () => []);
+
+      const metadataChild = new MockRem('tagged_read_debug_child', 'Metadata Child');
+      metadataChild.setPowerupSlotMock(true);
+      metadataChild.setPowerupPropertyMock(true);
+      await metadataChild.setParent(rem);
+
+      await adapter.readNote({ remId: 'tagged_read_debug', includeContent: 'none' });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Tag read unavailable for rem tagged_read_debug: getTags() is missing'
+        ),
+        expect.objectContaining({
+          availableTagMethods: expect.arrayContaining([
+            'addTag',
+            'getTagPropertyValue',
+            'getTags',
+            'removeTag',
+            'taggedRem',
+          ]),
+          availableMetadataMethods: expect.arrayContaining([
+            'addTag',
+            'getTagPropertyValue',
+            'isPowerupProperty',
+            'isPowerupSlot',
+            'removeTag',
+          ]),
+          pluginRemNamespaceMethods: expect.arrayContaining(['findByName', 'findOne', 'getAll']),
+          pluginRemCapabilities: {
+            hasGetAll: true,
+            hasFindOne: true,
+            hasFindByName: true,
+          },
+          childMetadata: [
+            {
+              remId: 'tagged_read_debug_child',
+              title: 'Metadata Child',
+              flags: {
+                isProperty: false,
+                isPowerupProperty: true,
+                isPowerupPropertyListItem: false,
+                isPowerupSlot: true,
+                isPowerupEnum: false,
+              },
+            },
+          ],
+        })
+      );
+
+      warnSpy.mockRestore();
+    });
+
     it('should omit aliases when none exist', async () => {
       plugin.addTestRem('no_alias', 'No Aliases');
 
       const result = await adapter.readNote({ remId: 'no_alias' });
       expect(result.aliases).toBeUndefined();
+    });
+
+    it('should include tags on structured read child nodes when present', async () => {
+      const parent = plugin.addTestRem('read_tags_struct_parent', 'Parent');
+      const child = new MockRem('read_tags_struct_child', 'Tagged Child');
+      const childTag = plugin.addTestRem('read_tags_child_tag', 'reference');
+      await child.setParent(parent);
+      await child.addTag(childTag._id);
+
+      const result = await adapter.readNote({
+        remId: 'read_tags_struct_parent',
+        includeContent: 'structured',
+        depth: 1,
+      });
+
+      expect(result.contentStructured).toEqual([
+        {
+          remId: 'read_tags_struct_child',
+          title: 'Tagged Child',
+          headline: 'Tagged Child',
+          remType: 'text',
+          tags: ['reference'],
+        },
+      ]);
     });
 
     it('should include type-aware delimiter in headline for concept with detail', async () => {

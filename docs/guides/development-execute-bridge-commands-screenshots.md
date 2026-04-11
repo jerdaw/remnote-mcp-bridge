@@ -19,36 +19,29 @@ Before running commands from DevTools:
 
 ![Bridge visible and helper source](./images/execute-bridge-console-01-plugin-visible-and-helper-source.jpg)
 
-## 2) Select the correct plugin iframe console context
+## 2) Select the correct `localhost:8080` console context
 
 In Chrome DevTools Console context picker:
 
-- Choose `index.html (localhost:8080)` that maps to the visible plugin iframe.
-- If multiple `localhost:8080` entries appear, test the other one if requests time out.
+- You will usually see two `index.html (localhost:8080)` entries.
+- Choose the one that does **not** highlight the visible Automation Bridge sidebar/plugin iframe.
+- If selecting the context highlights the visible plugin/sidebar, that is the wrong context for these helper scripts
+  and will usually cause timeouts.
+- If `await runAndLog('get_status')` times out, switch to the other `localhost:8080` entry, paste helper again, and
+  retry.
 
-![Select plugin iframe context](./images/execute-bridge-console-02-select-correct-plugin-iframe-context.jpg)
+![Select non-highlighted localhost context](./images/execute-bridge-console-02a-select-non-highlighted-localhost-context.jpg)
 
 ## 3) Paste helper into console
 
 Paste and run the full helper code from the helper file once in that context.
 
-Expected immediate output is typically `undefined` (this is fine).
+Expected result: object with fields like `connected` and `pluginVersion`
+as `await runAndLog('get_status');` was called at the end of the helper script.
 
-![Paste helper in console](./images/execute-bridge-console-03-paste-helper-into-console.jpg)
+![Successful get_status in correct context](./images/execute-bridge-console-02b-correct-context-get-status-success.jpg)
 
-## 4) Run a simple command first (`get_status`)
-
-Run:
-
-```js
-await runAndLog('get_status');
-```
-
-Expected result: object with fields like `connected` and `pluginVersion`.
-
-![Run get_status and verify](./images/execute-bridge-console-04-run-get-status-and-verify-result.jpg)
-
-## 5) Run command with richer output (`search`)
+## 4) Run command with richer output (`search`)
 
 Run:
 
@@ -68,6 +61,8 @@ Expected result: `{ results: [...] }` with `remId`, `title`, and optional `conte
 
 - Timeout after helper paste:
   - Usually wrong `localhost:8080` context selected.
+  - If the selected context highlights the visible Automation Bridge sidebar/plugin, switch to the other
+    `localhost:8080` entry.
   - Re-select the other `index.html (localhost:8080)` entry, paste helper again, retry.
 - No events/responses:
   - The bridge runtime should already be active in the background.

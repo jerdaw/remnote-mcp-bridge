@@ -48,6 +48,16 @@ contract keeps iterations safe and predictable.
 - Omitted when no aliases exist.
 - Present in both search and read outputs.
 
+### `tags` (optional)
+
+- `tags` is an array of human-readable tag names applied directly to the returned Rem.
+- Omitted when no tags exist or when the current SDK/runtime does not expose readable tag IDs.
+- Present in both search and read outputs.
+- In `search_by_tag`, `tags` belongs to the resolved target Rem that is returned, not necessarily the originally
+  tagged descendant that caused the match.
+- Live RemNote runtime currently does not expose reliable reverse note -> tags lookup for `read_note` and plain
+  `search`; see [`../../tag-readback-limitations.md`](../../tag-readback-limitations.md).
+
 ### `remType`
 
 - `remType` is required in both search and read outputs.
@@ -89,6 +99,7 @@ contract keeps iterations safe and predictable.
   - `headline`
   - `remType`
   - optional `aliases`
+  - optional `tags`
   - optional `cardDirection`
   - optional `children` (same shape recursively; omitted when empty)
 - Rendering respects `depth` and `childLimit` parameters.
@@ -165,6 +176,7 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 - Default `depth` for `readNote` changed from 3 to 5.
 - New required fields in output: `headline`.
 - New optional fields in output: `aliases`, `contentProperties`.
+- New optional fields in output: `tags`.
 - New optional fields in output: `parentRemId`, `parentTitle`.
 - `detail` field removed from `search` and `read_note` outputs; use `headline` for display-ready back-content rendering.
 
@@ -172,5 +184,6 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 - MCP server should advertise these response fields in tool `outputSchema` so AI clients can plan tool usage correctly.
 - MCP server should advertise `parentRemId` and `parentTitle` in search/read `outputSchema`.
+- MCP server should advertise `tags` in search/read root items and structured child items.
 - MCP server should keep `remnote_search_by_tag` output schema aligned with `remnote_search`.
 - CLI text output may summarize/abbreviate some fields for readability; JSON output should preserve full bridge data.
