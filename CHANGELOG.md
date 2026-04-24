@@ -7,25 +7,21 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-04-24
+
 ### Added
 
 - Added optional `tags` metadata to `search`, `search_by_tag`, and `read_note`, including structured child nodes
   when `includeContent: "structured"` is used.
 
+### Changed
+
+- Corrected the Developer Console debugging guides to identify the working `localhost:8080` plugin runtime window.
+
 ### Fixed
 
 - Fix reverse tag readback on `read_note` and plain `search` by using the live-validated `getTagRems()` SDK method.
 - Simplify tag-read diagnostics to concise warnings focused on `getTagRems()` failures and unresolved tag results.
-
-### Documentation
-
-- Updated the bridge search/read contract and README to document readable tag metadata on note retrieval surfaces.
-- Removed the obsolete tag-readback limitation guide and stale references to the old SDK-gap diagnosis.
-- Corrected the Developer Console debugging guides to explain that the working `localhost:8080` context is the
-  non-highlighted plugin runtime window, not the visible Automation Bridge sidebar iframe, and refreshed the
-  screenshots accordingly.
-- Documented the resolved tag-readback behavior directly in the bridge search/read contract instead of a separate
-  limitation note.
 
 ## [0.12.0] - 2026-04-09
 
