@@ -158,7 +158,11 @@ Use this sequence for first live testing:
 For Codex CLI testing, expose only read-oriented MCP tools first. This keeps write-capable tools
 out of the model-visible tool list even if the bridge/server are running.
 
-Example `~/.codex/config.toml` entry:
+Do not leave this in a normal default Codex configuration unless RemNote access should be available
+to ordinary Codex sessions. Prefer a temporary test `$CODEX_HOME`, a dedicated Codex profile, or a
+short-lived config change that is removed after testing.
+
+Opt-in test configuration:
 
 ```toml
 [mcp_servers.remnote-mcptest]
