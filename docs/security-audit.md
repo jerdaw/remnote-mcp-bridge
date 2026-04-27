@@ -153,6 +153,32 @@ Use this sequence for first live testing:
    only the created note.
 10. Do not configure remote/cloud MCP clients until local-only behavior is understood.
 
+## Codex Read-Only Configuration
+
+For Codex CLI testing, expose only read-oriented MCP tools first. This keeps write-capable tools
+out of the model-visible tool list even if the bridge/server are running.
+
+Example `~/.codex/config.toml` entry:
+
+```toml
+[mcp_servers.remnote-mcptest]
+url = "http://127.0.0.1:3001/mcp"
+enabled_tools = ["remnote_status", "remnote_search", "remnote_search_by_tag", "remnote_read_note", "remnote_read_table", "remnote_get_playbook"]
+default_tools_approval_mode = "approve"
+```
+
+With the hardened bridge build loaded in a local-only `MCPTest` knowledge base and the MCP server
+running on `127.0.0.1`, Codex CLI verification produced:
+
+- `remnote_status`: connected, server/plugin `0.13.0`, `acceptWriteOperations=false`,
+  `acceptReplaceOperation=false`
+- `remnote_search`: succeeded
+- `remnote_read_note`: succeeded for a searched Rem ID
+- `remnote_get_playbook`: succeeded
+- `remnote_search_by_tag`: succeeded for a nonexistent test tag with zero results
+- `remnote_create_note`, `remnote_update_note`, and `remnote_append_journal`: unavailable to Codex
+  because they were not included in `enabled_tools`
+
 ## Open Issues Before Trusting With Real Notes
 
 - The broad RemNote permission grant is inherent to the current plugin design.
