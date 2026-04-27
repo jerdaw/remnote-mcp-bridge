@@ -26,8 +26,9 @@ describe('RemAdapter', () => {
 
   describe('Settings management', () => {
     it('should initialize with default settings', () => {
+      adapter = new RemAdapter(plugin as unknown as typeof plugin);
       const settings = adapter.getSettings();
-      expect(settings.acceptWriteOperations).toBe(true);
+      expect(settings.acceptWriteOperations).toBe(false);
       expect(settings.acceptReplaceOperation).toBe(false);
       expect(settings.autoTagEnabled).toBe(true);
       expect(settings.autoTag).toBe('');

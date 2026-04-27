@@ -15,7 +15,7 @@ export const SETTING_WS_URL = 'automation-bridge-ws-url';
 export const SETTING_DEFAULT_PARENT = 'automation-bridge-default-parent';
 
 // Default values
-export const DEFAULT_ACCEPT_WRITE_OPERATIONS = true;
+export const DEFAULT_ACCEPT_WRITE_OPERATIONS = false;
 export const DEFAULT_ACCEPT_REPLACE_OPERATION = false;
 export const DEFAULT_AUTO_TAG = '';
 export const DEFAULT_JOURNAL_PREFIX = '';

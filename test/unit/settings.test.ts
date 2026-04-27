@@ -54,7 +54,7 @@ describe('Settings', () => {
 
   describe('Default values', () => {
     it('should have correct default values', () => {
-      expect(DEFAULT_ACCEPT_WRITE_OPERATIONS).toBe(true);
+      expect(DEFAULT_ACCEPT_WRITE_OPERATIONS).toBe(false);
       expect(DEFAULT_ACCEPT_REPLACE_OPERATION).toBe(false);
       expect(DEFAULT_AUTO_TAG).toBe('');
       expect(DEFAULT_JOURNAL_PREFIX).toBe('');
@@ -73,7 +73,7 @@ describe('Settings', () => {
   describe('AutomationBridgeSettings interface', () => {
     it('should accept valid settings object', () => {
       const settings: AutomationBridgeSettings = {
-        acceptWriteOperations: true,
+        acceptWriteOperations: false,
         acceptReplaceOperation: false,
         autoTagEnabled: true,
         autoTag: '',
@@ -83,7 +83,7 @@ describe('Settings', () => {
         defaultParentId: '',
       };
 
-      expect(settings.acceptWriteOperations).toBe(true);
+      expect(settings.acceptWriteOperations).toBe(false);
       expect(settings.acceptReplaceOperation).toBe(false);
       expect(settings.autoTagEnabled).toBe(true);
       expect(settings.autoTag).toBe('');
@@ -139,7 +139,7 @@ describe('Settings', () => {
   describe('Settings helpers', () => {
     it('should build the default settings object', () => {
       expect(getDefaultAutomationBridgeSettings()).toEqual({
-        acceptWriteOperations: true,
+        acceptWriteOperations: false,
         acceptReplaceOperation: false,
         autoTagEnabled: true,
         autoTag: '',

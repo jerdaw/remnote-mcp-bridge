@@ -188,7 +188,7 @@ Access plugin settings in RemNote via **Settings > Plugins > Automation Bridge (
 
 | Setting                  | Description                                                          | Default               |
 | ------------------------ | -------------------------------------------------------------------- | --------------------- |
-| Accept write operations  | Allow write actions (`create_note`, `update_note`, `append_journal`) | `true`                |
+| Accept write operations  | Allow write actions (`create_note`, `update_note`, `append_journal`) | `false`               |
 | Accept replace operation | Allow destructive `update_note` replace operations                   | `false`               |
 | Auto-tag created notes   | Add a tag to notes created via bridge actions                        | `true`                |
 | Auto-tag name            | Tag name for auto-tagged created notes                               | ``                    |

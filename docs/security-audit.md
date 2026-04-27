@@ -156,7 +156,8 @@ Use this sequence for first live testing:
 ## Open Issues Before Trusting With Real Notes
 
 - The broad RemNote permission grant is inherent to the current plugin design.
-- Write operations default to enabled.
+- On this hardening branch, write operations default to disabled. Re-check this before rebasing
+  onto upstream, because upstream previously defaulted writes to enabled.
 - The server's local OAuth provider auto-approves clients; this is reasonable locally but not a
   sufficient remote security boundary.
 - Dependency audit findings need remediation, especially in the server dependency graph.
