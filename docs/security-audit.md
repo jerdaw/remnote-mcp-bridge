@@ -159,8 +159,17 @@ For Codex CLI testing, expose only read-oriented MCP tools first. This keeps wri
 out of the model-visible tool list even if the bridge/server are running.
 
 Do not leave this in a normal default Codex configuration unless RemNote access should be available
-to ordinary Codex sessions. Prefer a temporary test `$CODEX_HOME`, a dedicated Codex profile, or a
-short-lived config change that is removed after testing.
+to ordinary Codex sessions. Prefer command-level config overrides so RemNote tools are available
+only for the current invocation.
+
+This fork includes `./codex-remnote-readonly.sh`, which wraps Codex with those one-shot overrides:
+
+```bash
+./codex-remnote-readonly.sh exec --sandbox read-only --cd /home/jer/repos/remnote-mcp-server \
+  "Use remnote-mcptest to call remnote_status exactly once."
+```
+
+The script keeps `codex mcp list` empty and does not persist RemNote MCP credentials.
 
 Opt-in test configuration:
 
